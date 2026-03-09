@@ -1,0 +1,26 @@
+name: Validate PR
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check WORKSPACE.md is IDLE
+        run: |
+          for f in projects/*/WORKSPACE.md; do
+            if grep -q "Status: ACTIVE" "$f"; then
+              echo "⚠️  $f is still ACTIVE — did the agent forget to set it to IDLE?"
+            fi
+          done
+      - name: Check PROJECT.md exists for changed projects
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '^projects/' | cut -d/ -f2 | sort -u | while read proj; do
+            if [ ! -f "projects/$proj/PROJECT.md" ]; then
+              echo "❌ Missing PROJECT.md in projects/$proj"
+              exit 1
+            fi
+          done

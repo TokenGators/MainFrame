@@ -1,0 +1,3 @@
+# Phaser 3 + Tiled support + dialogue scaffold
+# run: npm create vite@latest . -- --template vanilla, then: npm i phaser
+# Add Tiled map loader and dialogue system during first project setup
