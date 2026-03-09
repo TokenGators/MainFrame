@@ -1,0 +1,22 @@
+{
+  "name": "space-n-gators",
+  "version": "1.0.0",
+  "description": "Hybrid Space Invaders + Brick Breaker game",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack serve --mode development --port 8082",
+    "build": "webpack --mode production"
+  },
+  "keywords": ["game", "phaser", "gators"],
+  "author": "TokenGators",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.55.2"
+  },
+  "devDependencies": {
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
+    "html-webpack-plugin": "^5.5.4"
+  }
+}
