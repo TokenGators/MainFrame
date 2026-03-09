@@ -1,0 +1,24 @@
+{
+  "name": "gatorrr",
+  "version": "1.0.0",
+  "description": "Phaser 3 Frogger-style game with TokenGators theme",
+  "main": "main.js",
+  "scripts": {
+    "start": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "dev": "webpack --watch --mode development"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "babel-loader": "^9.0.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^4.0.0",
+    "webpack-dev-server": "^4.0.0",
+    "html-webpack-plugin": "^5.0.0",
+    "webpack-merge": "^5.0.0"
+  }
+}
