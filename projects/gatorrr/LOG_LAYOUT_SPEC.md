@@ -1,197 +1,186 @@
-# Gator Frogger - Log Column Layout Specification
+# Gator Frogger - Log Column Layout Specification (Updated for 320x180)
 
-## Current Problem
-- 8 log columns with visible gaps between them (1.5x log width = 30px gap)
-- Pattern: LOG | GAP | LOG | GAP | LOG ... (8 logs + 7 empty columns)
-- Creates sparse river with too much empty space
+## Rendering Context
+- **Internal resolution:** 320x180 (upscaled 4x to 1280x720)
+- **Tile size:** 16px
+- **Grid:** 20 columns x 11 rows (usable play area: rows 1-10)
+- **Color palette:** PICO-8 (16 colors only)
 
-## New Specification (APPROVED)
+## Log Column Layout
 
 ### Horizontal Axis (River Width Coverage)
-- **Total columns:** 15 (not 8)
-- **Column width:** 32px each
-- **River width:** 15 × 32px = 480px (fills 80% of 600px screen width)
-- **Column spacing:** 0px (NO gaps between columns)
-- **Coverage:** Every single column contains logs
-- **Pattern:** LOG | LOG | LOG | LOG | LOG ... | LOG (15 continuous columns, no empty space)
+- **Total columns:** 15
+- **Column width:** 16px each (1 tile)
+- **River width:** 15 x 16px = 240px
+- **River occupies:** cols 2-16 (x=32 to x=272)
+- **Column spacing:** 0px (no gaps between columns)
+- **Pattern:** LOG | LOG | LOG | ... | LOG (15 continuous columns)
 
 ### Log Dimensions (Variable Height)
-- **Smallest log:** 2 units tall (2 × 32px = 64px)
-- **Biggest log:** 6 units tall (6 × 32px = 192px)
-- **Log width:** Always 20px (remains constant)
+- **Smallest log:** 2 tiles tall (2 x 16px = 32px)
+- **Biggest log:** 4 tiles tall (4 x 16px = 64px)
+- **Log width:** 10px (centered within 16px column)
 - **Height selection:** Randomized per log when spawning
-- **Options:** 2, 3, 4, 5, or 6 units tall
+- **Options:** 2, 3, or 4 tiles tall
+- **Color:** Brown (`0xAB5236` from PICO-8 palette)
 
 ### Vertical Axis (Logs Within Each Column)
-- **Logs per column:** 3-4 logs (continuous wrapping, infinite scroll)
-- **Vertical gaps between logs:** RANDOMIZED on spawn
-  - Option 1: **0px** (logs touching/adjacent)
-  - Option 2: **32px** (1 unit gap)
-  - Option 3: **64px** (2 unit gap)
-  - Option 4: **96px** (3 unit gap)
-  - Option 5: **128px** (4 unit gap)
-  - Option 6: **160px** (5 unit gap)
-  - Option 7: **192px** (6 unit gap)
+- **Logs per column:** 3-5 logs (continuous wrapping, infinite scroll)
+- **Vertical gaps between logs:** Randomized on spawn
+  - Option 1: **16px** (1 tile gap)
+  - Option 2: **32px** (2 tile gap)
+  - Option 3: **48px** (3 tile gap)
+  - Option 4: **64px** (4 tile gap)
 - **Selection:** Random choice per log spawn
-- **Result:** Unpredictable but navigable gaps for gator (32×32 sprite)
+- **Result:** Unpredictable but navigable gaps for gator (16x16 sprite)
+
+### Direction & Speed
+- **Direction:** Alternating UP/DOWN per column (col 2 UP, col 3 DOWN, col 4 UP, etc.)
+- **Speed:** 8-20 px/sec per column (randomized at level start)
+- **Wrapping:** Logs that move off-screen reappear on the opposite edge
 
 ## Visual Layout
 
-### Current (Wrong)
+### Grid View (320x180)
 ```
-|LOG|gap|LOG|gap|LOG|gap|LOG|gap|LOG|gap|LOG|gap|LOG|gap|LOG|
-```
-(8 logs, 7 empty columns)
+Col: 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19
+     |LB|LP|  RIVER (15 log columns, 240px)             |-- RB --|
 
-### New (Correct)
+Within each log column:
+  [LOG 32px]    <- 2 tiles tall
+  [gap 16px]
+  [LOG 64px]    <- 4 tiles tall
+  [gap 32px]
+  [LOG 48px]    <- 3 tiles tall
+  [gap 48px]
+  ... (wrapping)
 ```
-|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|LOG|
-```
-(15 logs, 0 empty columns)
-
-**Within each column, logs have:**
-- **Random heights:** 2-6 units tall (64-192px)
-- **Random spacing:** 0, 32, 64, 96, 128, 160, or 192px apart
 
 ## Implementation Details
 
-### River Dimensions
-- **Horizontal:** 15 columns × 32px = 480px wide
-- **Left edge:** x = 80 (left bank)
-- **River occupies:** x = 80 to x = 560 (480px)
-- **Right edge:** x = 560 (right bank starts)
-- **Note:** Adjust screen layout if needed (river is 480px, was 640px before)
-
 ### Log Spawning Logic
 ```
-For each of 15 columns:
-  For each column, spawn logs vertically:
-    - Initial Y position: random
-    - For each log:
-      - randomHeight = randomly choose from [2, 3, 4, 5, 6] units
-      - logHeightPx = randomHeight × 32
-      - randomGap = randomly choose from [0, 32, 64, 96, 128, 160, 192]
-      - nextLogY = currentLogY + logHeightPx + randomGap
-    - Repeat until off-screen, then wrap around
+For each of 15 columns (cols 2-16):
+  columnX = col * 16 + 8  // center of column
+  direction = (col % 2 === 0) ? 1 : -1  // alternating
+  speed = randomBetween(8, 20) * direction
+
+  Fill column with logs vertically:
+    startY = randomBetween(-32, 0)  // offset start
+    For each log:
+      heightTiles = randomChoice([2, 3, 4])
+      logHeightPx = heightTiles * 16
+      gapPx = randomChoice([16, 32, 48, 64])
+      create log at (columnX, currentY, 10, logHeightPx)
+      currentY += logHeightPx + gapPx
+    Repeat until off-screen, then wrap
 ```
 
 ### Gator Navigation
-- Gator can move through gaps between logs (minimum 0px, up to 192px)
-- Logs vary in height (2-6 units = 64-192px tall)
-- Some columns might have logs touching (0px gap) → tight squeeze
-- Some columns might have 192px gaps → easy passage
-- Taller logs (6 units) require more careful navigation
+- Gator is 16x16, moves in 16px grid steps
+- Minimum gap is 16px (1 tile) = exactly gator-sized, tight squeeze
+- Maximum gap is 64px (4 tiles) = easy passage
 - Navigation is always possible but varies by column configuration
+- Gator takes -1 HP on log collision (with 500ms cooldown)
 
 ### Frog Navigation
-- Frogs move left (east-to-west) across all 15 columns
-- Detect logs in current column
-- Jump to logs or wait in water
-- Same smart AI applies to all 15 columns
-
-## Approval Checklist
-- ✅ 15 total columns (not 8)
-- ✅ Each column 32px wide
-- ✅ No gaps between columns (continuous coverage)
-- ✅ Every column has logs
-- ✅ Log heights: Variable (2-6 units tall = 64-192px)
-- ✅ Vertical gaps within columns: randomly 0, 32, 64, 96, 128, 160, or 192px
-- ✅ River width: 480px (x=80 to x=560)
-
-**Ready to implement? Y/N**
+- Frogs move LEFT across all 15 columns (grid-based hopping)
+- Each hop = 1 tile (16px) in UP, DOWN, or LEFT direction
+- Frogs detect logs and ride them vertically (ON_LOG state)
+- Frogs progress leftward until reaching lily pad zone (col 1)
 
 ---
 
 ## Frog Movement (Grid-Based Hopping)
 
 ### Decision Timer
-- **Interval:** 0.5 seconds (500ms)
-- **Trigger:** Every 0.5 seconds, each frog makes a movement decision
-- **No smooth animation** — movement is discrete (instant jump)
+- **Interval:** 500ms (0.5 seconds)
+- **Uses Phaser delta time** (NOT hardcoded `+= 16`)
+- **No smooth animation** - movement is discrete (instant jump)
 
 ### Movement Mechanics
-- **Movement unit:** 1 grid square = 32 pixels
-- **Per decision:** Frog makes ONE jump per decision point (or stays still)
-- **Jump probability:**
-  - 60% chance: Jump (move 1 unit)
-  - 40% chance: Wait (stay in place)
-- **Grid alignment:** Frogs snap to 32px grid at all times (x, y are multiples of 32)
+- **Movement unit:** 1 tile = 16 pixels
+- **Per decision:** Frog makes ONE jump (or stays still)
+- **Jump probability:** 60% jump, 40% wait
+- **Grid alignment:** Frogs snap to 16px grid at all times
 
 ### Jump Directions
-- **Allowed directions:** UP, DOWN, LEFT only
-- **Never RIGHT** — frogs always progress toward lily pads on the left
-- **Direction selection:** Random choice among UP/DOWN/LEFT (equal probability)
-- **Pixel offsets:**
-  - UP: gridY -= 1 (visual y -= 32)
-  - DOWN: gridY += 1 (visual y += 32)
-  - LEFT: gridX -= 1 (visual x -= 32)
-
-### AI Decision Logic
-At each 0.5-second decision point:
-1. Random choice: Jump (60%) or Wait (40%)
-2. If Jump:
-   - Random direction from [UP, DOWN, LEFT]
-   - Move 1 unit in that direction
-   - Check for log collision at new position
-   - If on log: Enter ON_LOG state (ride for 1-2 seconds)
-   - If in water: Stay SWIMMING (next decision in 0.5s)
-3. If Wait:
-   - Frog stays in current grid position
-   - Next decision in 0.5 seconds
+- **Allowed:** UP, DOWN, LEFT only
+- **Never RIGHT** - frogs always progress toward lily pads
+- **Direction selection:** Equal probability among UP/DOWN/LEFT
 
 ### Visual Representation
-- Frogs displayed as 24×24 squares
-- Color indicates state:
-  - Red (0xff0000): SWIMMING
-  - Light red (0xff6666): ON_LOG (riding a log)
-- Position: Snapped to grid tiles (grid-aligned)
+- **Size:** 16x16 px (NOT 24x24)
+- **Colors (PICO-8 palette):**
+  - Red (`0xFF004D`): SWIMMING
+  - Orange (`0xFFA300`): ON_LOG
+  - Pink flash (`0xFF77A8`): VULNERABLE (waiting > 2s)
 
 ---
 
 ## Lily Pads
 
 ### Location
-- **Bank:** LEFT side (green left bank)
-- **X position:** x = 40 (near left edge)
-- **X condition:** x < 100 defines left bank area
-- **Grid position:** Frogs moving LEFT and reaching x < 100 can occupy lily pads
+- **Zone:** Col 1 (lily pad knockout column)
+- **X position:** col 1, center x=24
+- **Grid bounds for reaching pads:** frog.gridCol <= 1
 
 ### Pad Placement
 - **Count:** 5 lily pads
-- **Spacing:** Distributed vertically on left bank
-- **Visual:** Yellow/gold circles (radius 16px)
-- **Positions:**
-  - Pad 1: y = 64 + 16 = 80
-  - Pad 2: y = 128 + 16 = 144
-  - Pad 3: y = 192 + 16 = 208
-  - Pad 4: y = 256 + 16 = 272
-  - Pad 5: y = 320 + 16 = 336
+- **Spacing:** Distributed vertically in play area
+- **Sprite:** 16x16 px
+- **Colors (PICO-8 palette):**
+  - Empty: Dark Green (`0x008751`)
+  - Filled: Dark Red (`0x7E2553`)
 
-### Win Condition
-- Frogs move LEFT and reach x < 100 (left bank)
-- Frog collision with lily pad → pad fills (turns dark red)
-- Game loses when all 5 lily pads are filled (frogs reached safety)
+### Positions
+| Pad | Grid (col, row) | Pixel Center (x, y) |
+|-----|-----------------|---------------------|
+| 1 | (1, 2) | (24, 40) |
+| 2 | (1, 4) | (24, 72) |
+| 3 | (1, 5) | (24, 88) |
+| 4 | (1, 7) | (24, 120) |
+| 5 | (1, 9) | (24, 152) |
+
+### Win/Lose Conditions
+- Frog reaches col <= 1 and is near an unfilled pad -> pad fills
+- All 5 pads filled -> GAME OVER (lose)
+- Gator eats 10 frogs -> WIN
 
 ---
 
 ## Frog Spawn Behavior
 
 ### Spawn Parameters
-- **Spawn count:** 6-10 frogs maximum (doubled from 3-5)
-- **Spawn location:** RIGHT edge of river (x ≈ 560)
-- **Spawn interval:** Every 2-3 seconds (random 2000-3000ms)
-- **Grid alignment:** Spawned on 32px grid
+- **Max active frogs:** 6-8 (randomized per wave)
+- **Spawn location:** col 17, center x=280, random row (1-10)
+- **Spawn interval:** 1500-2250ms (25% faster than original)
+- **Grid alignment:** Spawned on 16px grid
 
 ### Spawn Mechanics
-1. Check current frog count vs. random max (6-10)
+1. Check current frog count vs. random max (6-8)
 2. If count < max, spawn new frog
-3. Position: Grid-aligned on right side (x = 560, y = random grid row)
+3. Position: Grid-aligned on right bank (col 17, random row)
 4. State: SWIMMING (initial)
-5. Decision timer: Starts at 0 (first decision in 0.5s)
+5. Decision timer: Starts at 0 (first decision in 500ms)
 
-### Pressure on Gator
-- **More frogs = more threat**
-- 6-10 frogs trying to reach left lily pads simultaneously
-- Higher spawn rate (every 2-3 seconds) means gator must keep intercepting
-- Difficulty increases due to volume (not frog speed or intelligence)
-- Gator has 3 HP before losing
+---
+
+## Reconciliation Notes
+
+Values updated from original spec to fit 320x180 retro canvas:
+
+| Parameter | Original (800x600) | Updated (320x180) |
+|-----------|--------------------|--------------------|
+| Tile size | 32px | 16px |
+| River width | 480px (15x32) | 240px (15x16) |
+| River X range | 80-560 | 32-272 |
+| Log width | 20px | 10px |
+| Log height | 2-6 units (64-192px) | 2-4 tiles (32-64px) |
+| Gaps | 0-192px | 16-64px |
+| Speed | 16-30 px/sec | 8-20 px/sec |
+| Frog size | 24x24 | 16x16 |
+| Lily pad X | 48 | 24 (col 1 center) |
+| Spawn X | 560 | 280 (col 17 center) |
+
+**Ready to implement? Y/N**
