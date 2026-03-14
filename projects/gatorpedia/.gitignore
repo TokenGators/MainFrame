@@ -1,5 +1,0 @@
-# Media library — all assets are tracked
-# But exclude OS files
-.DS_Store
-Thumbs.db
-*.tmp

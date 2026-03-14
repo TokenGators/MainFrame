@@ -1,0 +1,1 @@
+{"job_id":"ranger-scrape-link-media","run_date":"2026-03-05T09:17:54Z","assets_processed":1,"posts_processed":1,"media_extracted":1,"rate_limit_hits":0,"errors":["x-api-blocked","graphql-404","cors-blocked"],"status":"paused-auth-required","next_action":"awaiting-x-api-auth-or-manual-posts"}
