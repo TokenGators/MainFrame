@@ -1,11 +1,11 @@
 # Workspace Status
 
-**Status:** ACTIVE
+**Status:** IDLE
 **Last updated:** 2026-03-16
-**Working on:** add-contributing
+**Working on:** PR submitted for add-contributing
 **Branch:** agent/gatorrr/add-contributing
 **Initiated by:** unknown
 **Agent system:** OpenClaw
 
 ## Recent activity log
-- 2026-03-16: add-contributing
+- 2026-03-16: PR submitted for add-contributing
