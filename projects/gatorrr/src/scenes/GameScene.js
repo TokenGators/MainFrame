@@ -40,6 +40,7 @@ export default class GameScene extends Phaser.Scene {
     this.logManager = new LogColumnManager(this);
     this.collisionSystem = new CollisionSystem(this);
 
+    this.createBackground();
     this.createLilyPads();
     this.createHUD();
 
@@ -50,6 +51,23 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
+  }
+
+  createBackground() {
+    // Left bank (col 0): rectangle(0,0,16,180, 0x008751) depth -1
+    this.add.rectangle(0, 0, 16, 180, 0x008751).setDepth(-1);
+    
+    // Lily zone (col 1): rectangle(16,0,16,180, 0x00A860) depth -1
+    this.add.rectangle(16, 0, 16, 180, 0x00A860).setDepth(-1);
+    
+    // River (cols 2-16): rectangle(32,0,240,180, 0x1D2B53) depth -1
+    this.add.rectangle(32, 0, 240, 180, 0x1D2B53).setDepth(-1);
+    
+    // Right bank: rectangle(272,0,48,180, 0x008751) depth -1
+    this.add.rectangle(272, 0, 48, 180, 0x008751).setDepth(-1);
+    
+    // HUD bar: rectangle(0,0,320,12, 0x000000) depth 9
+    this.add.rectangle(0, 0, 320, 12, 0x000000).setDepth(9);
   }
 
   createLilyPads() {
@@ -70,12 +88,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createHUD() {
-    const style = { fontSize: '8px', fill: '#ffffff' };
+    const style = { fontSize: '8px', fill: '#ffffff', fontFamily: 'monospace' };
     this.hud = {
-      hpText:     this.add.text(4,  2, 'HP: 3/3',      style).setDepth(10),
-      frogsText:  this.add.text(60, 2, 'Frogs: 0/10',  style).setDepth(10),
-      padsText:   this.add.text(130, 2, 'Pads: 0/5',   style).setDepth(10),
-      timeText:   this.add.text(200, 2, 'Time: 60',     style).setDepth(10),
+      hpText:     this.add.text(4,  2, 'HP:',      style).setDepth(10),
+      frogsText:  this.add.text(60, 2, 'FROGS:X/10',  style).setDepth(10),
+      padsText:   this.add.text(130, 2, 'PADS:X/5',   style).setDepth(10),
+      timeText:   this.add.text(200, 2, 'T:XX',     style).setDepth(10),
     };
   }
 

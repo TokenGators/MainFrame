@@ -23,6 +23,8 @@ export default class Gator extends Phaser.GameObjects.Rectangle {
 
     // Make sure it's not affected by physics gravity
     this.body.setAllowGravity(false);
+    
+    this.setDepth(1);
   }
 
   handleInput(cursors) {

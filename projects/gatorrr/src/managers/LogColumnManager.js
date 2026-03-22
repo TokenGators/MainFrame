@@ -7,9 +7,9 @@ export default class LogColumnManager {
     this.logs = [];
     this.columns = [];
 
-    // Create 15 columns of logs (cols 2-16)
+    // Create columns of logs
     for (let i = 0; i < NUM_LOG_COLUMNS; i++) {
-      const colIndex = i + 2; // Start from column 2
+      const colIndex = i + 4; // Start from column 4
       const direction = (colIndex % 2 === 0) ? 1 : -1; // alternating direction
       const speed = (Math.random() * (LOG_SPEED_MAX - LOG_SPEED_MIN) + LOG_SPEED_MIN) * direction;
 
@@ -26,12 +26,16 @@ export default class LogColumnManager {
 
   initializeColumns() {
     for (const column of this.columns) {
-      let currentY = -64; // Start above the screen
-
-      while (currentY < 180) {
+      // Place 3 logs per column, evenly spaced
+      const spacing = Math.floor(180 / 3); // 60px spacing
+      const startY = column.colIndex * spacing - 16 * 10; // Start Y position
+      
+      for (let i = 0; i < 3; i++) {
         const heightTiles = LOG_HEIGHT_OPTIONS[Math.floor(Math.random() * LOG_HEIGHT_OPTIONS.length)];
         const gapPx = LOG_GAP_OPTIONS[Math.floor(Math.random() * LOG_GAP_OPTIONS.length)];
-
+        
+        const currentY = startY + i * spacing;
+        
         const log = new Log(
           this.scene,
           column.colIndex,
@@ -45,8 +49,6 @@ export default class LogColumnManager {
 
         this.logs.push(log);
         column.logs.push(log);
-
-        currentY += (heightTiles * 16) + gapPx;
       }
     }
   }

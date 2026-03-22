@@ -23,6 +23,8 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
 
     // Make sure it's not affected by physics gravity
     this.body.setAllowGravity(false);
+    
+    this.setDepth(1);
   }
 
   update(delta, logs) {
@@ -45,43 +47,59 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
       return;
     }
 
-    // 60% chance to jump, 40% chance to wait
-    if (Math.random() < FROG_JUMP_CHANCE) {
-      const possibleMoves = [];
+    // 70% left / 15% up / 15% down directional bias
+    const rand = Math.random();
+    let direction = null;
+    
+    if (rand < 0.7) {
+      // Move left (70% chance)
+      direction = 'LEFT';
+    } else if (rand < 0.85) {
+      // Move up (15% chance)
+      direction = 'UP';
+    } else {
+      // Move down (15% chance)
+      direction = 'DOWN';
+    }
 
-      // Check possible moves: UP, DOWN, LEFT (frogs move left toward lily pads)
-      if (this.gridRow > 1) possibleMoves.push({ dir: 'UP', col: this.gridCol, row: this.gridRow - 1 });
-      if (this.gridRow < 10) possibleMoves.push({ dir: 'DOWN', col: this.gridCol, row: this.gridRow + 1 });
-      if (this.gridCol > 0) possibleMoves.push({ dir: 'LEFT', col: this.gridCol - 1, row: this.gridRow });
+    const possibleMoves = [];
 
-      // If there are valid moves, make one
-      if (possibleMoves.length > 0) {
-        const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+    // Check possible moves based on direction
+    if (direction === 'UP' && this.gridRow > 1) {
+      possibleMoves.push({ dir: 'UP', col: this.gridCol, row: this.gridRow - 1 });
+    } else if (direction === 'DOWN' && this.gridRow < 10) {
+      possibleMoves.push({ dir: 'DOWN', col: this.gridCol, row: this.gridRow + 1 });
+    } else if (direction === 'LEFT' && this.gridCol > 0) {
+      possibleMoves.push({ dir: 'LEFT', col: this.gridCol - 1, row: this.gridRow });
+    }
 
-        // Update grid position
-        this.gridCol = move.col;
-        this.gridRow = move.row;
+    // If there are valid moves, make one
+    if (possibleMoves.length > 0) {
+      const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
 
-        // Update pixel position
-        this.x = this.gridCol * 16;
-        this.y = this.gridRow * 16;
+      // Update grid position
+      this.gridCol = move.col;
+      this.gridRow = move.row;
 
-        // Check if we're on a log
-        let onLog = false;
-        for (const log of logs) {
-          if (log.gridCol === this.gridCol &&
-              log.y <= this.y &&
-              log.y + log.height >= this.y) {
-            this.state = 'ON_LOG';
-            this.onLogId = log.id;
-            onLog = true;
-            break;
-          }
+      // Update pixel position
+      this.x = this.gridCol * 16;
+      this.y = this.gridRow * 16;
+
+      // Check if we're on a log
+      let onLog = false;
+      for (const log of logs) {
+        if (log.gridCol === this.gridCol &&
+            log.y <= this.y &&
+            log.y + log.height >= this.y) {
+          this.state = 'ON_LOG';
+          this.onLogId = log.id;
+          onLog = true;
+          break;
         }
+      }
 
-        if (!onLog) {
-          this.state = 'SWIMMING';
-        }
+      if (!onLog) {
+        this.state = 'SWIMMING';
       }
     }
   }

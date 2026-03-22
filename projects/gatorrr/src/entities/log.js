@@ -21,6 +21,8 @@ export default class Log extends Phaser.GameObjects.Rectangle {
 
     // Make sure it's not affected by physics gravity
     this.body.setAllowGravity(false);
+    
+    this.setDepth(1);
   }
 
   update(delta) {

@@ -51,8 +51,8 @@ export const MAX_FROGS_MIN = 6;
 export const MAX_FROGS_MAX = 8;
 export const LOG_SPEED_MIN = 8;  // px/sec
 export const LOG_SPEED_MAX = 20; // px/sec
-export const LOG_HEIGHT_OPTIONS = [2, 3, 4]; // in tiles
-export const LOG_GAP_OPTIONS = [16, 32, 48, 64]; // in px
+export const LOG_HEIGHT_OPTIONS = [2, 3, 4]; // tiles
+export const LOG_GAP_OPTIONS = [16, 32, 48, 64]; // px
 export const LOG_WIDTH = 10; // px (within 16px column)
 export const NUM_LOG_COLUMNS = 15;
 
