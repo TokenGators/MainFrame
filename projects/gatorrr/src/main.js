@@ -8,6 +8,10 @@ const config = {
   type: Phaser.AUTO,
   width: CANVAS_WIDTH,
   height: CANVAS_HEIGHT,
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 }, debug: false },
+  },
   render: {
     pixelArt: true,
     antialias: false,
