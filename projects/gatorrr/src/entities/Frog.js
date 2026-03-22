@@ -3,7 +3,7 @@ import { C, FROG_DECISION_INTERVAL, FROG_JUMP_CHANCE } from '../constants.js';
 
 export default class Frog extends Phaser.GameObjects.Rectangle {
   constructor(scene, col, row) {
-    super(scene, col * 16 + 8, row * 16 + 8, 16, 16);
+    super(scene, col * 16, row * 16, 16, 16);
 
     this.scene = scene;
     this.gridCol = col;
@@ -15,7 +15,7 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
 
     // Set up graphics properties
     this.setFillStyle(C.RED);
-    this.setOrigin(0.5);
+    this.setOrigin(0);
 
     // Add to scene
     scene.add.existing(this);
@@ -63,8 +63,8 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
         this.gridRow = move.row;
 
         // Update pixel position
-        this.x = this.gridCol * 16 + 8;
-        this.y = this.gridRow * 16 + 8;
+        this.x = this.gridCol * 16;
+        this.y = this.gridRow * 16;
 
         // Check if we're on a log
         let onLog = false;

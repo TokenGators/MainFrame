@@ -6,7 +6,6 @@ import GameOverScene from './scenes/GameOverScene.js';
 
 const config = {
   type: Phaser.AUTO,
-  parent: 'game',
   width: CANVAS_WIDTH,
   height: CANVAS_HEIGHT,
   physics: {

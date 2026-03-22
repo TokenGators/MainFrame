@@ -88,15 +88,10 @@ export default class CollisionSystem {
   }
 
   checkRectangleCollision(obj1, obj2) {
-    // Both objects use setOrigin(0.5) so x/y is center
-    const hw1 = obj1.width / 2;
-    const hh1 = obj1.height / 2;
-    const hw2 = obj2.width / 2;
-    const hh2 = obj2.height / 2;
-
-    return obj1.x - hw1 < obj2.x + hw2 &&
-           obj1.x + hw1 > obj2.x - hw2 &&
-           obj1.y - hh1 < obj2.y + hh2 &&
-           obj1.y + hh1 > obj2.y - hh2;
+    // All objects use setOrigin(0) so x/y is top-left
+    return obj1.x < obj2.x + obj2.width &&
+           obj1.x + obj1.width > obj2.x &&
+           obj1.y < obj2.y + obj2.height &&
+           obj1.y + obj1.height > obj2.y;
   }
 }

@@ -38,7 +38,7 @@ export const C = {
 };
 
 // Gameplay
-export const GATOR_START = { col: 10, row: 9 };
+export const GATOR_START = { col: 0, row: 5 };
 export const MAX_HP = 3;
 export const FROGS_TO_WIN = 10;
 export const TOTAL_PADS = 5;

@@ -3,7 +3,7 @@ import { C, GATOR_START } from '../constants.js';
 
 export default class Gator extends Phaser.GameObjects.Rectangle {
   constructor(scene, col, row) {
-    super(scene, col * 16 + 8, row * 16 + 8, 16, 16);
+    super(scene, col * 16, row * 16, 16, 16);
 
     this.scene = scene;
     this.gridCol = col;
@@ -15,7 +15,7 @@ export default class Gator extends Phaser.GameObjects.Rectangle {
 
     // Set up graphics properties
     this.setFillStyle(C.GREEN);
-    this.setOrigin(0.5);
+    this.setOrigin(0);
 
     // Add to scene
     scene.add.existing(this);
@@ -44,8 +44,8 @@ export default class Gator extends Phaser.GameObjects.Rectangle {
   }
 
   _applyPos() {
-    this.x = this.gridCol * 16 + 8;
-    this.y = this.gridRow * 16 + 8;
+    this.x = this.gridCol * 16;
+    this.y = this.gridRow * 16;
     this.moveCooldown = 150;
   }
 
