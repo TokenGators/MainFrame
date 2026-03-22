@@ -6,8 +6,13 @@ import GameOverScene from './scenes/GameOverScene.js';
 
 const config = {
   type: Phaser.AUTO,
+  parent: 'game',
   width: CANVAS_WIDTH,
   height: CANVAS_HEIGHT,
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 }, debug: false },
+  },
   render: {
     pixelArt: true,
     antialias: false,

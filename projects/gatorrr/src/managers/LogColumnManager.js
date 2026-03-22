@@ -6,35 +6,32 @@ export default class LogColumnManager {
     this.scene = scene;
     this.logs = [];
     this.columns = [];
-    
+
     // Create 15 columns of logs (cols 2-16)
     for (let i = 0; i < NUM_LOG_COLUMNS; i++) {
       const colIndex = i + 2; // Start from column 2
       const direction = (colIndex % 2 === 0) ? 1 : -1; // alternating direction
-      const speed = Math.random() * (LOG_SPEED_MAX - LOG_SPEED_MIN) + LOG_SPEED_MIN;
-      
+      const speed = (Math.random() * (LOG_SPEED_MAX - LOG_SPEED_MIN) + LOG_SPEED_MIN) * direction;
+
       this.columns.push({
-        colIndex: colIndex,
-        direction: direction,
-        speed: speed * direction,
+        colIndex,
+        direction,
+        speed,
         logs: []
       });
     }
-    
-    // Initialize logs in each column
+
     this.initializeColumns();
   }
-  
+
   initializeColumns() {
-    // Fill each column with logs
     for (const column of this.columns) {
       let currentY = -64; // Start above the screen
-      
-      while (currentY < 180) { // Keep adding logs until they're off-screen
+
+      while (currentY < 180) {
         const heightTiles = LOG_HEIGHT_OPTIONS[Math.floor(Math.random() * LOG_HEIGHT_OPTIONS.length)];
         const gapPx = LOG_GAP_OPTIONS[Math.floor(Math.random() * LOG_GAP_OPTIONS.length)];
-        
-        // Create log at the current position
+
         const log = new Log(
           this.scene,
           column.colIndex,
@@ -42,32 +39,24 @@ export default class LogColumnManager {
           heightTiles,
           column.speed
         );
-        
+
         log.gridCol = column.colIndex;
         log.id = `${column.colIndex}-${this.logs.length}`;
-        
+
         this.logs.push(log);
         column.logs.push(log);
-        
-        // Move to next position
+
         currentY += (heightTiles * 16) + gapPx;
       }
     }
   }
-  
+
   update(delta) {
     for (const log of this.logs) {
       log.update(delta);
-      
-      // Wrap logs that go off-screen
-      if (log.y > 180) {
-        log.y = -log.height;
-      } else if (log.y < -log.height) {
-        log.y = 180;
-      }
     }
   }
-  
+
   getAllLogs() {
     return this.logs;
   }

@@ -12,47 +12,38 @@ export default class GameScene extends Phaser.Scene {
   }
 
   init() {
-    // Initialize game state
     this.gameState = {
       hp: MAX_HP,
       frogsEaten: 0,
       padsFilled: 0,
       gameOver: false,
       win: false,
-      timeLeft: 60000, // 60 seconds in milliseconds
+      timeLeft: 60000,
       score: 0
     };
-    
+
     this.cursors = null;
     this.gator = null;
     this.frogSpawner = null;
     this.logManager = null;
     this.collisionSystem = null;
-    this.frogs = [];
-    this.logs = [];
     this.lilyPads = [];
     this.hud = null;
   }
 
   create() {
-    // Set up input
     this.cursors = this.input.keyboard.createCursorKeys();
-    
-    // Create the gator at starting position
+
     this.gator = new Gator(this, GATOR_START.col, GATOR_START.row);
-    
-    // Create managers
+
     this.frogSpawner = new FrogSpawner(this);
     this.logManager = new LogColumnManager(this);
     this.collisionSystem = new CollisionSystem(this);
-    
-    // Create lily pads at their starting positions
+
     this.createLilyPads();
-    
-    // Create HUD elements
     this.createHUD();
-    
-    // Set up game loop
+
+    // Countdown timer — fires every second
     this.time.addEvent({
       delay: 1000,
       callback: this.updateTimer,
@@ -62,7 +53,6 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createLilyPads() {
-    // Create lily pads at their starting positions
     for (const pos of this.getLilyPadPositions()) {
       const lilyPad = new LilyPad(this, pos.col, pos.row);
       this.lilyPads.push(lilyPad);
@@ -70,7 +60,6 @@ export default class GameScene extends Phaser.Scene {
   }
 
   getLilyPadPositions() {
-    // Return the positions from constants
     return [
       { col: 1, row: 2 },
       { col: 1, row: 4 },
@@ -81,35 +70,32 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createHUD() {
-    // Create basic HUD elements
+    const style = { fontSize: '8px', fill: '#ffffff' };
     this.hud = {
-      scoreText: this.add.text(10, 10, 'Score: 0', { fontSize: '16px', fill: '#fff' }),
-      timeText: this.add.text(10, 30, 'Time: 60', { fontSize: '16px', fill: '#fff' }),
-      hpText: this.add.text(10, 50, 'HP: 3', { fontSize: '16px', fill: '#fff' }),
+      hpText:     this.add.text(4,  2, 'HP: 3/3',      style).setDepth(10),
+      frogsText:  this.add.text(60, 2, 'Frogs: 0/10',  style).setDepth(10),
+      padsText:   this.add.text(130, 2, 'Pads: 0/5',   style).setDepth(10),
+      timeText:   this.add.text(200, 2, 'Time: 60',     style).setDepth(10),
     };
   }
 
   update(time, delta) {
-    // Update game state using delta time for frame-rate independence
-    if (this.gameState.gameOver) {
-      return;
-    }
-    
-    // Handle gator input
+    if (this.gameState.gameOver) return;
+
+    // Update gator (input + cooldowns)
     if (this.gator && this.cursors) {
       this.gator.handleInput(this.cursors);
+      this.gator.update(delta);
     }
-    
-    // Update managers
+
     if (this.frogSpawner) {
       this.frogSpawner.update(delta);
     }
-    
+
     if (this.logManager) {
       this.logManager.update(delta);
     }
-    
-    // Check collisions
+
     if (this.collisionSystem && this.gator) {
       this.collisionSystem.checkAll(
         this.gator,
@@ -119,46 +105,39 @@ export default class GameScene extends Phaser.Scene {
         this.gameState
       );
     }
-    
+
+    // Keep gator hp in sync
+    this.gameState.hp = this.gator ? this.gator.hp : 0;
+
     // Update HUD
     if (this.hud) {
-      this.hud.scoreText.setText('Score: ' + this.gameState.score);
-      this.hud.timeText.setText('Time: ' + Math.ceil(this.gameState.timeLeft / 1000));
-      this.hud.hpText.setText('HP: ' + this.gameState.hp);
+      this.hud.hpText.setText(`HP: ${this.gameState.hp}/${MAX_HP}`);
+      this.hud.frogsText.setText(`Frogs: ${this.gameState.frogsEaten}/10`);
+      this.hud.padsText.setText(`Pads: ${this.gameState.padsFilled}/5`);
+      this.hud.timeText.setText(`Time: ${Math.ceil(this.gameState.timeLeft / 1000)}`);
     }
-    
-    // Check win/lose conditions
-    if (this.gameState.win || this.gameState.hp <= 0) {
+
+    // Win / lose
+    if (this.gameState.win || this.gameState.hp <= 0 || this.gameState.gameOver) {
       this.gameState.gameOver = true;
-      
-      // Show game over screen or restart
-      this.scene.start('GameOverScene');
+      this.scene.start('GameOverScene', { gameState: this.gameState });
     }
   }
 
   updateTimer() {
     if (!this.gameState.gameOver) {
       this.gameState.timeLeft -= 1000;
-      
-      // Add time bonus to score
       this.gameState.score += 1;
-      
-      // Check if time is up
+
       if (this.gameState.timeLeft <= 0) {
         this.gameState.timeLeft = 0;
         this.gameState.gameOver = true;
-        this.scene.start('GameOverScene');
+        this.scene.start('GameOverScene', { gameState: this.gameState });
       }
     }
   }
 
-  // Helper methods for entity management
-  addFrog(frog) {
-    if (this.frogSpawner && this.frogSpawner.frogs) {
-      this.frogSpawner.frogs.push(frog);
-    }
-  }
-
+  // Entity management helpers
   removeFrog(frog) {
     if (this.frogSpawner) {
       this.frogSpawner.removeFrog(frog);
