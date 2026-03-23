@@ -54,7 +54,7 @@ export const LOG_SPEED_MAX = 50;
 export const LOG_HEIGHT_OPTIONS = [2, 3];
 export const LOG_GAP_OPTIONS = [32, 48, 64, 80];
 export const LOG_WIDTH = 20; // scaled to 24px tile
-export const NUM_LOG_COLUMNS = 10;
+export const NUM_LOG_COLUMNS = 15;
 
 // Lily pad positions (grid coords)
 export const LILY_PAD_POSITIONS = [

@@ -43,7 +43,7 @@ export default class CollisionSystem {
       const index = frogs.indexOf(frog);
       if (index > -1) {
         frogs.splice(index, 1);
-        frog.destroy();
+        if (frog.active) frog.destroy(); // guard against already-destroyed
       }
     }
   }
@@ -52,53 +52,42 @@ export default class CollisionSystem {
     const toRemove = [];
 
     for (const frog of frogs) {
-      if (frog.gridCol <= 1) { // Near lily pads
+      if (toRemove.includes(frog)) continue; // already marked
+
+      // Despawn frogs that reached left bank (col 0) without scoring
+      if (frog.gridCol <= 0) {
+        toRemove.push(frog);
+        continue;
+      }
+
+      // Check lily pad collision at col 1
+      if (frog.gridCol === 1) {
         for (const pad of lilyPads) {
           if (!pad.filled) {
             const distance = Math.sqrt(
               Math.pow(frog.x - pad.x, 2) +
               Math.pow(frog.y - pad.y, 2)
             );
-
             if (distance < TILE) {
               pad.fill();
               gameState.padsFilled++;
-
-              // Check lose condition
               if (gameState.padsFilled >= 5) {
                 gameState.gameOver = true;
               }
-
               toRemove.push(frog);
-              break; // Only fill one pad per frog
+              break;
             }
           }
         }
       }
     }
 
-    // Remove frogs after iteration to avoid splice-during-iteration bug
+    // Single removal pass — safe, no double-destroy
     for (const frog of toRemove) {
       const index = frogs.indexOf(frog);
       if (index > -1) {
         frogs.splice(index, 1);
-        frog.destroy();
-      }
-    }
-
-    // Check for frogs that somehow reached col 0 and despawn them without scoring
-    for (const frog of frogs) {
-      if (frog.gridCol <= 0 && !toRemove.includes(frog)) {
-        toRemove.push(frog); // despawn — landed on bank, no score
-      }
-    }
-
-    // Remove any additional frogs that were marked for removal
-    for (const frog of toRemove) {
-      const index = frogs.indexOf(frog);
-      if (index > -1 && !frog.destroyed) {
-        frogs.splice(index, 1);
-        frog.destroy();
+        if (frog.active) frog.destroy(); // guard against already-destroyed
       }
     }
   }

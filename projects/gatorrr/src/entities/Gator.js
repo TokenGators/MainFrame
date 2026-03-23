@@ -24,10 +24,24 @@ export default class Gator extends Phaser.GameObjects.Sprite {
 
   handleInput(cursors) {
     if (this.moveCooldown > 0) return;
-    if (Phaser.Input.Keyboard.JustDown(cursors.left) && this.gridCol > 0) { this.gridCol--; this._applyPos(); }
-    else if (Phaser.Input.Keyboard.JustDown(cursors.right) && this.gridCol < 19) { this.gridCol++; this._applyPos(); }
-    else if (Phaser.Input.Keyboard.JustDown(cursors.up) && this.gridRow > 0) { this.gridRow--; this._applyPos(); }
-    else if (Phaser.Input.Keyboard.JustDown(cursors.down) && this.gridRow < 10) { this.gridRow++; this._applyPos(); }
+    if (Phaser.Input.Keyboard.JustDown(cursors.left) && this.gridCol > 0) { 
+      this.gridCol--;
+      this.setFlipX(true);   // face left
+      this._applyPos(); 
+    }
+    else if (Phaser.Input.Keyboard.JustDown(cursors.right) && this.gridCol < 19) { 
+      this.gridCol++;
+      this.setFlipX(false);  // face right (default)
+      this._applyPos(); 
+    }
+    else if (Phaser.Input.Keyboard.JustDown(cursors.up) && this.gridRow > 0) { 
+      this.gridRow--;
+      this._applyPos(); 
+    }
+    else if (Phaser.Input.Keyboard.JustDown(cursors.down) && this.gridRow < 10) { 
+      this.gridRow++;
+      this._applyPos(); 
+    }
   }
 
   _applyPos() {
