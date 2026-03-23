@@ -1,79 +1,52 @@
 import Phaser from 'phaser';
-import { C, GATOR_START } from '../constants.js';
+import { C, GATOR_START, TILE } from '../constants.js';
 
-export default class Gator extends Phaser.GameObjects.Rectangle {
+export default class Gator extends Phaser.GameObjects.Sprite {
   constructor(scene, col, row) {
-    super(scene, col * 16, row * 16, 16, 16);
+    super(scene, col * TILE, row * TILE, 'gator');
 
     this.scene = scene;
     this.gridCol = col;
     this.gridRow = row;
     this.hp = 3;
-    this.direction = 1; // 1 for right, -1 for left
     this.damageCooldown = 0;
     this.moveCooldown = 0;
 
-    // Set up graphics properties
-    this.setFillStyle(C.GREEN);
     this.setOrigin(0);
+    this.setDisplaySize(TILE, TILE);
+    this.setDepth(2);
 
-    // Add to scene
     scene.add.existing(this);
     scene.physics.add.existing(this);
-
-    // Make sure it's not affected by physics gravity
     this.body.setAllowGravity(false);
-    
-    this.setDepth(1);
+    this.body.setSize(TILE, TILE);
   }
 
   handleInput(cursors) {
     if (this.moveCooldown > 0) return;
-
-    if (Phaser.Input.Keyboard.JustDown(cursors.left) && this.gridCol > 0) {
-      this.gridCol--;
-      this._applyPos();
-    } else if (Phaser.Input.Keyboard.JustDown(cursors.right) && this.gridCol < 19) {
-      this.gridCol++;
-      this._applyPos();
-    } else if (Phaser.Input.Keyboard.JustDown(cursors.up) && this.gridRow > 0) {
-      this.gridRow--;
-      this._applyPos();
-    } else if (Phaser.Input.Keyboard.JustDown(cursors.down) && this.gridRow < 10) {
-      this.gridRow++;
-      this._applyPos();
-    }
+    if (Phaser.Input.Keyboard.JustDown(cursors.left) && this.gridCol > 0) { this.gridCol--; this._applyPos(); }
+    else if (Phaser.Input.Keyboard.JustDown(cursors.right) && this.gridCol < 19) { this.gridCol++; this._applyPos(); }
+    else if (Phaser.Input.Keyboard.JustDown(cursors.up) && this.gridRow > 0) { this.gridRow--; this._applyPos(); }
+    else if (Phaser.Input.Keyboard.JustDown(cursors.down) && this.gridRow < 10) { this.gridRow++; this._applyPos(); }
   }
 
   _applyPos() {
-    this.x = this.gridCol * 16;
-    this.y = this.gridRow * 16;
+    this.x = this.gridCol * TILE;
+    this.y = this.gridRow * TILE;
     this.moveCooldown = 150;
   }
 
   takeDamage() {
     if (this.damageCooldown <= 0) {
       this.hp--;
-      this.damageCooldown = 500; // 500ms cooldown
-
-      // Flash red on hit
-      this.setFillStyle(C.RED);
-      this.scene.time.delayedCall(200, () => {
-        this.setFillStyle(C.GREEN); // Restore original color
-      });
+      this.damageCooldown = 500;
+      this.setTint(0xFF004D);
+      this.scene.time.delayedCall(200, () => { this.clearTint(); });
     }
-  }
-
-  getPixelPos() {
-    return { x: this.x, y: this.y };
   }
 
   update(delta) {
-    if (this.damageCooldown > 0) {
-      this.damageCooldown -= delta;
-    }
-    if (this.moveCooldown > 0) {
-      this.moveCooldown -= delta;
-    }
+    if (this.damageCooldown > 0) this.damageCooldown -= delta;
+    if (this.moveCooldown > 0) this.moveCooldown -= delta;
   }
 }

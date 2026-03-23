@@ -1,8 +1,8 @@
 // Rendering
-export const CANVAS_WIDTH = 320;
-export const CANVAS_HEIGHT = 180;
-export const TILE = 16;
-export const ZOOM = 4;
+export const CANVAS_WIDTH = 480;
+export const CANVAS_HEIGHT = 270;
+export const TILE = 24;
+export const ZOOM = 2;
 
 // Grid
 export const GRID_COLS = CANVAS_WIDTH / TILE;   // 20
@@ -49,12 +49,12 @@ export const FROG_SPAWN_MIN = 1500; // ms
 export const FROG_SPAWN_MAX = 2250; // ms
 export const MAX_FROGS_MIN = 6;
 export const MAX_FROGS_MAX = 8;
-export const LOG_SPEED_MIN = 8;  // px/sec
-export const LOG_SPEED_MAX = 20; // px/sec
-export const LOG_HEIGHT_OPTIONS = [2, 3, 4]; // tiles
-export const LOG_GAP_OPTIONS = [16, 32, 48, 64]; // px
-export const LOG_WIDTH = 10; // px (within 16px column)
-export const NUM_LOG_COLUMNS = 15;
+export const LOG_SPEED_MIN = 20;
+export const LOG_SPEED_MAX = 50;
+export const LOG_HEIGHT_OPTIONS = [2, 3];
+export const LOG_GAP_OPTIONS = [32, 48, 64, 80];
+export const LOG_WIDTH = 20; // scaled to 24px tile
+export const NUM_LOG_COLUMNS = 10;
 
 // Lily pad positions (grid coords)
 export const LILY_PAD_POSITIONS = [

@@ -1,4 +1,4 @@
-import { LOG_SPEED_MIN, LOG_SPEED_MAX, LOG_HEIGHT_OPTIONS, LOG_GAP_OPTIONS, NUM_LOG_COLUMNS } from '../constants.js';
+import { LOG_SPEED_MIN, LOG_SPEED_MAX, LOG_HEIGHT_OPTIONS, LOG_GAP_OPTIONS, NUM_LOG_COLUMNS, CANVAS_HEIGHT, TILE } from '../constants.js';
 import Log from '../entities/Log.js';
 
 export default class LogColumnManager {
@@ -27,8 +27,8 @@ export default class LogColumnManager {
   initializeColumns() {
     for (const column of this.columns) {
       // Place 3 logs per column, evenly spaced
-      const spacing = Math.floor(180 / 3); // 60px spacing
-      const startY = column.colIndex * spacing - 16 * 10; // Start Y position
+      const spacing = Math.floor(CANVAS_HEIGHT / 3); // 60px spacing
+      const startY = column.colIndex * spacing - TILE * 10; // Start Y position
       
       for (let i = 0; i < 3; i++) {
         const heightTiles = LOG_HEIGHT_OPTIONS[Math.floor(Math.random() * LOG_HEIGHT_OPTIONS.length)];

@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { C, FROG_DECISION_INTERVAL, FROG_JUMP_CHANCE } from '../constants.js';
+import { C, FROG_DECISION_INTERVAL, FROG_JUMP_CHANCE, TILE } from '../constants.js';
 
-export default class Frog extends Phaser.GameObjects.Rectangle {
+export default class Frog extends Phaser.GameObjects.Sprite {
   constructor(scene, col, row) {
-    super(scene, col * 16, row * 16, 16, 16);
+    super(scene, col * TILE, row * TILE, 'frog');
 
     this.scene = scene;
     this.gridCol = col;
@@ -14,8 +14,9 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
     this.timeOnLog = 0;
 
     // Set up graphics properties
-    this.setFillStyle(C.RED);
     this.setOrigin(0);
+    this.setDisplaySize(TILE, TILE);
+    this.setDepth(2);
 
     // Add to scene
     scene.add.existing(this);
@@ -23,8 +24,9 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
 
     // Make sure it's not affected by physics gravity
     this.body.setAllowGravity(false);
+    this.body.setSize(TILE, TILE);
     
-    this.setDepth(1);
+    // Keep all existing state/AI properties and makeDecision() logic
   }
 
   update(delta, logs) {
@@ -69,7 +71,7 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
       possibleMoves.push({ dir: 'UP', col: this.gridCol, row: this.gridRow - 1 });
     } else if (direction === 'DOWN' && this.gridRow < 10) {
       possibleMoves.push({ dir: 'DOWN', col: this.gridCol, row: this.gridRow + 1 });
-    } else if (direction === 'LEFT' && this.gridCol > 0) {
+    } else if (direction === 'LEFT' && this.gridCol > 1) { // Fixed: now can't go to col 0
       possibleMoves.push({ dir: 'LEFT', col: this.gridCol - 1, row: this.gridRow });
     }
 
@@ -82,8 +84,8 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
       this.gridRow = move.row;
 
       // Update pixel position
-      this.x = this.gridCol * 16;
-      this.y = this.gridRow * 16;
+      this.x = this.gridCol * TILE;
+      this.y = this.gridRow * TILE;
 
       // Check if we're on a log
       let onLog = false;

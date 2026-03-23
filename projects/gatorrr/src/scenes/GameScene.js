@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
@@ -54,20 +54,20 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createBackground() {
-    // Left bank (col 0): rectangle(0,0,16,180, 0x008751) depth -1
-    this.add.rectangle(0, 0, 16, 180, 0x008751).setDepth(-1);
+    // Left bank (col 0): rectangle(0,0,TILE,CANVAS_HEIGHT, 0x008751) depth -1
+    this.add.rectangle(0, 0, TILE, CANVAS_HEIGHT, 0x008751).setOrigin(0).setDepth(-1);
     
-    // Lily zone (col 1): rectangle(16,0,16,180, 0x00A860) depth -1
-    this.add.rectangle(16, 0, 16, 180, 0x00A860).setDepth(-1);
+    // Lily zone (col 1): rectangle(TILE,0,TILE,CANVAS_HEIGHT, 0x00A860) depth -1
+    this.add.rectangle(TILE, 0, TILE, CANVAS_HEIGHT, 0x00A860).setOrigin(0).setDepth(-1);
     
-    // River (cols 2-16): rectangle(32,0,240,180, 0x1D2B53) depth -1
-    this.add.rectangle(32, 0, 240, 180, 0x1D2B53).setDepth(-1);
+    // River (cols 2-16): rectangle(TILE*2,0,TILE*15,CANVAS_HEIGHT, 0x1D2B53) depth -1
+    this.add.rectangle(TILE*2, 0, TILE*15, CANVAS_HEIGHT, 0x1D2B53).setOrigin(0).setDepth(-1);
     
-    // Right bank: rectangle(272,0,48,180, 0x008751) depth -1
-    this.add.rectangle(272, 0, 48, 180, 0x008751).setDepth(-1);
+    // Right bank (cols 17-19): rectangle(TILE*17,0,TILE*3,CANVAS_HEIGHT, 0x008751) depth -1
+    this.add.rectangle(TILE*17, 0, TILE*3, CANVAS_HEIGHT, 0x008751).setOrigin(0).setDepth(-1);
     
-    // HUD bar: rectangle(0,0,320,12, 0x000000) depth 9
-    this.add.rectangle(0, 0, 320, 12, 0x000000).setDepth(9);
+    // HUD bar: rectangle(0,0,CANVAS_WIDTH,16, 0x000000) depth 9
+    this.add.rectangle(0, 0, CANVAS_WIDTH, 16, 0x000000).setOrigin(0).setDepth(9);
   }
 
   createLilyPads() {

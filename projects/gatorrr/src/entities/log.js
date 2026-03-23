@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { C, LOG_WIDTH } from '../constants.js';
+import { C, LOG_WIDTH, TILE } from '../constants.js';
 
 export default class Log extends Phaser.GameObjects.Rectangle {
   constructor(scene, colIndex, y, heightTiles, speed) {
-    const h = heightTiles * 16;
-    super(scene, colIndex * 16, y, LOG_WIDTH, h);
+    const h = heightTiles * TILE;
+    super(scene, colIndex * TILE, y, LOG_WIDTH, h);
 
     this.scene = scene;
     this.colIndex = colIndex;
@@ -30,14 +30,14 @@ export default class Log extends Phaser.GameObjects.Rectangle {
     this.y += this.speed * (delta / 1000);
 
     // Wrap when fully off screen
-    if (this.y > 180) {
+    if (this.y > 270) {  // CANVAS_HEIGHT = 270
       this.y = -this.height;
     } else if (this.y + this.height < 0) {
-      this.y = 180;
+      this.y = 270;  // CANVAS_HEIGHT = 270
     }
   }
 
   isOffScreen() {
-    return this.y > 180 || this.y + this.height < 0;
+    return this.y > 270 || this.y + this.height < 0;  // CANVAS_HEIGHT = 270
   }
 }

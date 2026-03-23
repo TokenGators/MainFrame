@@ -60,7 +60,7 @@ export default class CollisionSystem {
               Math.pow(frog.y - pad.y, 2)
             );
 
-            if (distance < 16) {
+            if (distance < TILE) {
               pad.fill();
               gameState.padsFilled++;
 
@@ -81,6 +81,22 @@ export default class CollisionSystem {
     for (const frog of toRemove) {
       const index = frogs.indexOf(frog);
       if (index > -1) {
+        frogs.splice(index, 1);
+        frog.destroy();
+      }
+    }
+
+    // Check for frogs that somehow reached col 0 and despawn them without scoring
+    for (const frog of frogs) {
+      if (frog.gridCol <= 0 && !toRemove.includes(frog)) {
+        toRemove.push(frog); // despawn — landed on bank, no score
+      }
+    }
+
+    // Remove any additional frogs that were marked for removal
+    for (const frog of toRemove) {
+      const index = frogs.indexOf(frog);
+      if (index > -1 && !frog.destroyed) {
         frogs.splice(index, 1);
         frog.destroy();
       }

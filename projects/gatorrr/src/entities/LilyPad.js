@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { C } from '../constants.js';
+import { C, TILE } from '../constants.js';
 
 export default class LilyPad extends Phaser.GameObjects.Rectangle {
   constructor(scene, col, row) {
-    super(scene, col * 16, row * 16, 16, 16);
+    super(scene, col * TILE, row * TILE, TILE, TILE);
 
     this.scene = scene;
     this.gridCol = col;
