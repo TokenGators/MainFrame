@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
@@ -22,6 +22,7 @@ export default class GameScene extends Phaser.Scene {
       score: 0
     };
 
+    this.rampStep = 0;
     this.cursors = null;
     this.gator = null;
     this.frogSpawner = null;
@@ -147,6 +148,12 @@ export default class GameScene extends Phaser.Scene {
       this.gameState.timeLeft -= 1000;
       this.gameState.score += 1;
 
+      // Apply difficulty ramp every RAMP_INTERVAL
+      const elapsed = 60000 - this.gameState.timeLeft;
+      if (elapsed > 0 && elapsed % RAMP_INTERVAL < 1000) {
+        this.applyDifficultyRamp();
+      }
+
       if (this.gameState.timeLeft <= 0) {
         this.gameState.timeLeft = 0;
         this.gameState.gameOver = true;
@@ -172,5 +179,20 @@ export default class GameScene extends Phaser.Scene {
 
   getLilyPads() {
     return this.lilyPads;
+  }
+
+  applyDifficultyRamp() {
+    this.rampStep++;
+    // Speed up logs
+    if (this.logManager) {
+      for (const log of this.logManager.getAllLogs()) {
+        const sign = log.speed > 0 ? 1 : -1;
+        log.speed += sign * LOG_SPEED_RAMP;
+      }
+    }
+    // Speed up frog spawns
+    if (this.frogSpawner) {
+      this.frogSpawner.spawnInterval = Math.max(500, this.frogSpawner.spawnInterval - FROG_SPAWN_RAMP);
+    }
   }
 }

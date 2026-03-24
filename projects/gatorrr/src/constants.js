@@ -52,9 +52,11 @@ export const MAX_FROGS_MAX = 8;
 export const LOG_SPEED_MIN = 20;
 export const LOG_SPEED_MAX = 50;
 export const LOG_HEIGHT_OPTIONS = [2, 3];
-export const LOG_GAP_OPTIONS = [32, 48, 64, 80];
+export const LOG_GAP_OPTIONS = [48, 64, 80, 96, 112]; // more breathing room
 export const LOG_WIDTH = 20; // scaled to 24px tile
-export const NUM_LOG_COLUMNS = 15;
+export const LOG_SPEED_RAMP = 10;   // +10 px/sec per interval
+export const FROG_SPAWN_RAMP = 200; // -200ms spawn interval per ramp step
+export const LOG_COUNT_RAMP = 1;    // +1 log per column per ramp step (max 4)
 
 // Lily pad positions (grid coords)
 export const LILY_PAD_POSITIONS = [

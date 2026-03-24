@@ -10,7 +10,7 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     this.gridRow = row;
     this.hp = 3;
     this.damageCooldown = 0;
-    this.moveCooldown = 0;
+    this.moving = false;
 
     this.setOrigin(0);
     this.setDisplaySize(TILE, TILE);
@@ -23,31 +23,44 @@ export default class Gator extends Phaser.GameObjects.Sprite {
   }
 
   handleInput(cursors) {
-    if (this.moveCooldown > 0) return;
-    if (Phaser.Input.Keyboard.JustDown(cursors.left) && this.gridCol > 0) { 
-      this.gridCol--;
-      this.setFlipX(true);   // face left
-      this._applyPos(); 
-    }
-    else if (Phaser.Input.Keyboard.JustDown(cursors.right) && this.gridCol < 19) { 
-      this.gridCol++;
-      this.setFlipX(false);  // face right (default)
-      this._applyPos(); 
-    }
-    else if (Phaser.Input.Keyboard.JustDown(cursors.up) && this.gridRow > 0) { 
-      this.gridRow--;
-      this._applyPos(); 
-    }
-    else if (Phaser.Input.Keyboard.JustDown(cursors.down) && this.gridRow < 10) { 
-      this.gridRow++;
-      this._applyPos(); 
-    }
-  }
+    if (this.moving) return; // block input while mid-tween
 
-  _applyPos() {
-    this.x = this.gridCol * TILE;
-    this.y = this.gridRow * TILE;
-    this.moveCooldown = 150;
+    let targetCol = this.gridCol;
+    let targetRow = this.gridRow;
+    let flip = null;
+
+    if (cursors.left.isDown && this.gridCol > 0) {
+      targetCol--;
+      flip = true;
+    } else if (cursors.right.isDown && this.gridCol < 19) {
+      targetCol++;
+      flip = false;
+    } else if (cursors.up.isDown && this.gridRow > 0) {
+      targetRow--;
+    } else if (cursors.down.isDown && this.gridRow < 10) {
+      targetRow++;
+    } else {
+      return; // no input
+    }
+
+    this.gridCol = targetCol;
+    this.gridRow = targetRow;
+    if (flip !== null) this.setFlipX(flip);
+    this.moving = true;
+
+    this.scene.tweens.add({
+      targets: this,
+      x: this.gridCol * TILE,
+      y: this.gridRow * TILE,
+      duration: 80, // ms to slide one tile
+      ease: 'Linear',
+      onUpdate: () => {
+        if (this.body) this.body.reset(this.x, this.y);
+      },
+      onComplete: () => {
+        this.moving = false;
+      }
+    });
   }
 
   takeDamage() {
@@ -61,6 +74,5 @@ export default class Gator extends Phaser.GameObjects.Sprite {
 
   update(delta) {
     if (this.damageCooldown > 0) this.damageCooldown -= delta;
-    if (this.moveCooldown > 0) this.moveCooldown -= delta;
   }
 }

@@ -26,8 +26,8 @@ export default class LogColumnManager {
 
   initializeColumns() {
     for (const column of this.columns) {
-      const numLogs = 3;
-      const spacing = Math.floor(CANVAS_HEIGHT / numLogs); // ~90px
+      const numLogs = 2; // was 3 — half as many logs, much more navigable
+      const spacing = Math.floor(CANVAS_HEIGHT / numLogs); // ~135px
       for (let i = 0; i < numLogs; i++) {
         const heightTiles = LOG_HEIGHT_OPTIONS[Math.floor(Math.random() * LOG_HEIGHT_OPTIONS.length)];
         // Stagger start positions evenly across the screen height, with random offset

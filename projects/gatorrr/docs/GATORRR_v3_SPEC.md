@@ -1,133 +1,250 @@
-# GATORRR v3 — Shipping Spec
+# GATORRR v3 — Full Shipping Spec
 
-**Status:** In progress  
+**Status:** Planning — awaiting approval before development  
 **Branch:** agent/gatorrr/fix-crash-and-phase2  
 **Owner:** Kthings  
 **Last updated:** 2026-03-23
 
 ---
 
-## 🔴 Must-Haves (Blockers)
+## 🔴 Must-Haves (Blockers for v1)
 
 ### 1. Crash-free full playthrough
-- No crashes at any point during a full 60s session
+- No crashes at any point during a full session
 - Win and lose conditions both trigger cleanly
 - Restart works without reload
 
-### 2. Game Over screen
-- Clear win screen: "YOU WIN 🐊 — Ate X frogs in Xs"
-- Clear lose screens: one for HP=0, one for all pads filled
-- Show score and time survived
+### 2. Game Over / Win screen
+- Win screen: "YOU WIN 🐊" + frogs eaten, time remaining, final score
+- Lose screens: separate for HP=0 and all pads filled
+- Show final score breakdown (frogs eaten, time bonus, pad penalty)
 - "Press R to restart" or on-screen button
 
 ### 3. Frog→lily pad logic end-to-end
-- Frogs crossing river on logs (see Frog AI section below)
-- Lily pad fill triggers correctly
+- Frogs crossing river using log AI (see Frog AI section)
+- Lily pad fill triggers correctly with visual feedback
 - Lose condition (5 pads filled) fires cleanly
-- Pad fill has visible feedback
 
 ---
 
-## 🟡 Should-Haves
+## 🟡 Should-Haves (v1 quality bar)
 
 ### 1. Sound effects
 - Hop (frog jumps)
 - Eat (gator eats frog)
-- Die (gator loses HP)
-- Even placeholder bleeps are fine for v1
+- Die/damage (gator loses HP)
+- Power-up collect
+- Win / lose stings
+- Placeholder bleeps acceptable for v1
 
-### 2. Start / title screen
-- Show game title, controls, and a "Press any key to start"
-- Don't drop players cold into gameplay
+### 2. Title / start screen
+- Game title, controls summary
+- "Press any key to start"
+- Show high score if one exists
 
-### 3. Score on game over
-- Show frogs eaten, pads filled, time survived
-- Even a basic score screen beats a blank restart
+### 3. Score system (see full breakdown below)
+- Points displayed live in HUD
+- Final score on game over
+- Breakdown visible (frogs eaten, time bonus, pad penalty, win bonus)
 
-### 5. Log sprites
-- Logs are the dominant visual — still plain brown rectangles
-- Replace with pixel art log sprites (brown cylindrical)
+### 4. Log sprites
+- Logs are the dominant visual — replace plain brown rectangles with pixel art
+- Brown cylindrical log sprites, direction shading (darker end = direction of travel)
 
-### 6. Visual feedback on lily pad fill
-- Flash or color change when a frog occupies a pad
-- Player needs to know a pad was just taken
+### 5. Visual feedback on lily pad fill
+- Color change + brief flash when a frog occupies a pad
+- Player needs immediate visual signal a pad was taken
+
+### 6. Frog type system (see full breakdown below)
+- 5 frog types by rarity and color
+- Visual-only differentiation (color tint on frog sprite)
 
 ---
 
 ## 🟢 Nice-to-Haves (Polish)
 
-### 1. Difficulty ramp
-- Speed and spawn rate increase as timer counts down
-- Last 20 seconds should feel intense
+### 1. Difficulty ramp — level-by-level
+- Each level completion increases difficulty parameters
+- Level N config: more logs per column, faster log speeds, faster/more frog spawns
+- Clean level transition screen between rounds
+- Parameters reset to level baseline on new level (not cumulative mid-level)
 
-### 4. Local high score
-- Store best score in localStorage
-- Show on game over and title screens
+### 4. Local leaderboard
+- Top 5 scores stored in localStorage
+- Shown on title screen and game over screen
+- Entries include: score, level reached, date
 
 ### 5. Background art
-- Replace flat color blocks with textured bank/river/grass
-- Forest silhouette on banks
+- Replace flat color blocks with textured bank/grass/river visuals
+- Forest silhouette on left/right banks
 
 ---
 
 ## 🐸 Frog AI — Smart River Crossing
 
-**This is a core gameplay mechanic, not just polish.**
+Frogs are trying to cross the river using logs as stepping stones. They prefer log-to-log hops but aren't perfect — mistakes land them in the water where the gator hunts them.
 
-### Behavior Model
+### Frog States
+- `ON_BANK` — on right bank, waiting to enter river
+- `ON_LOG` — riding a log, scanning for next log to jump to
+- `SWIMMING` — in water (vulnerable, slow, gator food)
+- `ON_PAD` — reached lily pad, scores against player
 
-Frogs are trying to cross the river using logs as stepping stones. They're not suicidal — they prefer to hop log-to-log. But they're not perfect, and sometimes end up in the water. That's when the gator can eat them.
-
-**States:**
-- `WAITING` — on a log, scanning for the next log to jump to
-- `JUMPING` — mid-jump to next log or lily pad
-- `SWIMMING` — in the water (vulnerable, moving slowly left)
-- `ON_LOG` — riding a log, moving with it vertically
-
-**Decision logic (per tick):**
-
-1. If ON_LOG:
-   - Scan the adjacent column to the left for a log that overlaps my current Y position
-   - If a log is within jump range (within ~1 tile vertically): jump to it (smart move)
-   - If no log available: wait (stay on current log)
-   - With `(1 - FROG_SMARTNESS)` probability: jump anyway even if no log (mistake → lands in water)
-
-2. If SWIMMING:
-   - Move left slowly (half speed of normal)
-   - Scan for nearby logs to grab onto
-   - Vulnerable to gator
-
-3. If on right bank (col 17-19):
-   - Start in WAITING state, look for first log
+### Decision Logic (per decision tick)
+1. If `ON_LOG`:
+   - Scan left-adjacent column for a log overlapping current Y ± 1 tile
+   - If log found: jump to it (smart move)
+   - If no log: wait (stay on current log, ride it)
+   - With `(1 - FROG_SMARTNESS)` probability: jump anyway → lands in water
+2. If `SWIMMING`:
+   - Move left slowly (half speed)
+   - Scan for nearby logs to grab
+   - Vulnerable to gator collision
 
 ### Tuning Constant
-
-Add to `src/constants.js`:
 ```js
-// 0.0 = dumb (always jumps regardless of water)
+// 0.0 = dumb (always jumps into water)
 // 1.0 = perfect (never jumps into water)
-// Start at 0.75 — mostly smart, occasionally makes mistakes
-export const FROG_SMARTNESS = 0.75;
+export const FROG_SMARTNESS = 0.75; // start here, dial up/down per feel
 ```
 
-### What this changes in gameplay
-- Frogs now ride logs across — you see them moving with logs, hopping between them
-- Occasionally a frog misjudges and falls in the river
-- River is now the hunting ground — gator wants to patrol water
-- Adds strategy: do you chase frogs in the water, or defend lily pads?
+---
+
+## 🎯 Score System
+
+### Points Earned
+| Event | Points |
+|-------|--------|
+| Eat basic frog (green) | 200 |
+| Eat blue frog | 500 |
+| Eat purple frog | 1,000 |
+| Eat red frog | 1,500 |
+| Eat gold frog | 2,000 |
+| Win round bonus | 1,000 |
+| Time remaining bonus | 10 pts × seconds left |
+
+### Points Lost
+| Event | Points |
+|-------|--------|
+| Frog reaches lily pad | -300 |
+
+### Tuning Constant
+```js
+export const SCORE_FROG_PAD_PENALTY = 300;
+export const SCORE_WIN_BONUS = 1000;
+export const SCORE_TIME_BONUS_PER_SEC = 10;
+```
 
 ---
 
-## Deployment
+## 🐸 Frog Types
 
-- Netlify deploy (one-time setup, then auto from `dist/`)
-- URL shareable for mobile QA
-- Must be done before calling v1 shipped
+Visual differentiation via color tint on the frog sprite. Spawn rates are weighted — rarer frogs are worth more.
+
+| Type | Color | Points | Target per game | Spawn weight |
+|------|-------|--------|-----------------|--------------|
+| Basic | Green | 200 | ~20+ | 60% |
+| Blue | Blue | 500 | ~10 | 25% |
+| Purple | Purple | 1,000 | ~5 | 10% |
+| Red | Red | 1,500 | ~2 | 4% |
+| Gold | Yellow/Gold | 2,000 | ~1 | 1% |
+
+### Tuning Constant
+```js
+// Adjust these to dial rarity up/down
+export const FROG_SPAWN_WEIGHTS = {
+  basic:  60,   // green
+  blue:   25,
+  purple: 10,
+  red:    4,
+  gold:   1,
+};
+```
+
+Spawn logic: roll a weighted random on each frog spawn to determine type, apply color tint to sprite.
 
 ---
 
-## Pipeline
+## 💊 Health Power-Ups
 
-**Murphy** (`qwen3-coder:30b`) — implementation  
-**QA** (`qwen3.5:27b`) — review each cycle  
-**Operator** — specs, prioritization, final call  
+White box with red cross, spawns randomly in the play area during the game.
+
+### Behavior
+- Spawns at a random grid position in the river or bank area (not on a log)
+- Visible for 8 seconds, then despawns if not collected
+- Gator collision = collect: +1 HP (capped at MAX_HP)
+- Target: ~3 per game (one every ~20 seconds)
+
+### Tuning Constants
+```js
+export const POWERUP_SPAWN_INTERVAL = 20000; // ms between spawns
+export const POWERUP_DURATION = 8000;        // ms visible before despawn
+export const POWERUP_HP_RESTORE = 1;         // HP granted on collect
+export const POWERUP_COUNT_TARGET = 3;       // per 60s game
+```
+
+### Visual
+- White rectangle with red cross drawn on top (no asset needed for v1)
+- Brief flash/tween on collect
+
+---
+
+## 🎮 Gator Movement — Option B (Tween Slide)
+
+- Grid-based movement (one tile per input)
+- 80ms slide tween to destination (smooth, readable)
+- Hold key to move continuously (isDown not JustDown)
+- `this.moving` flag blocks new input mid-tween
+- Flip sprite horizontally on left/right movement
+- Collision detection stays grid-based
+
+---
+
+## 📈 Difficulty Ramp (Level-by-Level)
+
+Each level completion triggers a parameter bump for the next level. No mid-level changes.
+
+| Level | Logs/col | Log speed | Frog spawn | Notes |
+|-------|----------|-----------|------------|-------|
+| 1 | 2 | 20–50 px/s | 1.5–2.25s | Tutorial feel |
+| 2 | 2 | 30–65 px/s | 1.25–2.0s | Slightly faster |
+| 3 | 3 | 40–80 px/s | 1.0–1.75s | More logs |
+| 4+ | 3+ | Scales | Scales | Cap at reasonable max |
+
+Level transition: brief "LEVEL X" screen, then restart timer with new params.
+
+---
+
+## 🌐 Deployment
+
+- Netlify deploy (one-time setup, auto-deploy from `dist/`)
+- Shareable URL for mobile QA
+- Required before calling v1 shipped
+
+---
+
+## 🔵 Phase 3 — Future Features
+
+### New Obstacles
+- **Boats** — larger, faster hazard crossing the river, different sprite
+- Can damage gator on contact
+
+### Collectibles
+- **Coins** — spawn randomly in river, visible 3–5 seconds then disappear
+- Gator collects for bonus score
+- Risk/reward: chase coins vs defend pads
+
+---
+
+## 🔵 Phase 3 — Future Features
+
+### Obstacles beyond logs
+- **Boats** — larger, faster moving hazard across the river
+- Different sprite, faster speed, larger hitbox
+
+### Collectibles
+- **Coins** — spawn randomly in the river, visible for 3-5 seconds then disappear
+- Gator swims over to collect for bonus score
+- Adds risk/reward: do you chase coins or stay defensive?
+
+---
