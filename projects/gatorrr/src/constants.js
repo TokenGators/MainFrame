@@ -40,6 +40,9 @@ export const C = {
 // Movement
 export const MOVE_DURATION = 80; // ms to slide one tile
 
+// Log columns (river spans cols 2-16 = 15 columns)
+export const NUM_LOG_COLUMNS = 15;
+
 // Gameplay
 export const GATOR_START = { col: 0, row: 5 };
 export const MAX_HP = 3;

@@ -26,13 +26,25 @@ export default class LogColumnManager {
 
   initializeColumns() {
     for (const column of this.columns) {
-      const numLogs = 2; // was 3 — half as many logs, much more navigable
-      const spacing = Math.floor(CANVAS_HEIGHT / numLogs); // ~135px
+      const numLogs = 2;
+      // Distribute logs evenly with randomized gaps from LOG_GAP_OPTIONS
+      let currentY = CANVAS_HEIGHT - (LOG_HEIGHT_OPTIONS[1] * TILE); // Start near bottom
+
       for (let i = 0; i < numLogs; i++) {
         const heightTiles = LOG_HEIGHT_OPTIONS[Math.floor(Math.random() * LOG_HEIGHT_OPTIONS.length)];
-        // Stagger start positions evenly across the screen height, with random offset
-        const startY = (i * spacing) + Math.floor(Math.random() * (spacing / 2)) - (heightTiles * TILE);
-        const log = new Log(this.scene, column.colIndex, startY, heightTiles, column.speed);
+        const logHeight = heightTiles * TILE;
+
+        // Place logs starting from bottom, with randomized gap above each
+        if (i === numLogs - 1) {
+          // Bottom-most log: place at bottom of screen
+          currentY = CANVAS_HEIGHT - logHeight;
+        } else {
+          // Upper logs: leave a random gap above the next log
+          const gap = LOG_GAP_OPTIONS[Math.floor(Math.random() * LOG_GAP_OPTIONS.length)];
+          currentY = currentY - logHeight - gap;
+        }
+
+        const log = new Log(this.scene, column.colIndex, currentY, heightTiles, column.speed);
         log.gridCol = column.colIndex;
         log.id = `${column.colIndex}-${this.logs.length}`;
         this.logs.push(log);
