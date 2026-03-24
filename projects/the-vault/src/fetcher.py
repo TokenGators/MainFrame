@@ -77,7 +77,9 @@ def fetch_x_com_content(url: str, timeout: int = 15) -> FetchResult:
         
         # Call fxtwitter API
         api_url = f"{FX_TWITTER_API}/{user}/status/{status_id}"
-        response = httpx.get(api_url, timeout=timeout)
+        response = httpx.get(api_url, timeout=timeout, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
         
         if response.status_code != 200:
             return FetchResult(
@@ -135,7 +137,7 @@ def fetch_article_content(url: str, timeout: int = 15) -> FetchResult:
     """
     try:
         # Use trafilatura to extract content
-        downloaded = trafilatura.fetch_url(url, timeout=timeout)
+        downloaded = trafilatura.fetch_url(url)
         
         if not downloaded:
             return FetchResult(
@@ -148,11 +150,11 @@ def fetch_article_content(url: str, timeout: int = 15) -> FetchResult:
                 error="Failed to download content"
             )
             
-        # Extract metadata and content
-        metadata = trafilatura.metadata.extract_metadata(downloaded)
-        title = metadata.get('title', '')
-        author = metadata.get('author', '')
-        published = metadata.get('date', '')
+        # Extract metadata and content (returns a Document object)
+        metadata = trafilatura.extract_metadata(downloaded)
+        title = getattr(metadata, 'title', '') or ''
+        author = getattr(metadata, 'author', '') or ''
+        published = getattr(metadata, 'date', '') or ''
         
         # Extract text content
         content = trafilatura.extract(

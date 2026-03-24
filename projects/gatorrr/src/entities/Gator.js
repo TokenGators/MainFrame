@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, TILE } from '../constants.js';
+import { C, GATOR_START, TILE, MOVE_DURATION } from '../constants.js';
 
 export default class Gator extends Phaser.GameObjects.Sprite {
   constructor(scene, col, row) {
@@ -52,7 +52,7 @@ export default class Gator extends Phaser.GameObjects.Sprite {
       targets: this,
       x: this.gridCol * TILE,
       y: this.gridRow * TILE,
-      duration: 80, // ms to slide one tile
+      duration: MOVE_DURATION,
       ease: 'Linear',
       onUpdate: () => {
         if (this.body) this.body.reset(this.x, this.y);

@@ -37,6 +37,9 @@ export const C = {
   PEACH:      0xFFCCAA,
 };
 
+// Movement
+export const MOVE_DURATION = 80; // ms to slide one tile
+
 // Gameplay
 export const GATOR_START = { col: 0, row: 5 };
 export const MAX_HP = 3;
