@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
 import CollisionSystem from '../managers/CollisionSystem.js';
 import LilyPad from '../entities/LilyPad.js';
+import PowerUp from '../entities/PowerUp.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -34,6 +35,8 @@ export default class GameScene extends Phaser.Scene {
     this.collisionSystem = null;
     this.lilyPads = [];
     this.hud = null;
+    this.powerUp = null;
+    this.powerUpTimer = null;
   }
 
   create() {
@@ -55,6 +58,60 @@ export default class GameScene extends Phaser.Scene {
       callback: this.updateTimer,
       callbackScope: this,
       loop: true
+    });
+
+    // Start power-up spawn timer
+    this.startPowerUpTimer();
+  }
+
+  startPowerUpTimer() {
+    this.powerUpTimer = this.time.delayedCall(POWERUP_SPAWN_INTERVAL, () => {
+      this.spawnPowerUp();
+    });
+  }
+
+  spawnPowerUp() {
+    // Only spawn if no power-up exists
+    if (this.powerUp) return;
+
+    // Try up to 5 times to find a valid spawn position
+    const validCols = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; // cols 2-16
+    const validRows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // rows 1-10
+
+    let attempts = 0;
+    let spawned = false;
+
+    while (attempts < 5 && !spawned) {
+      const col = validCols[Math.floor(Math.random() * validCols.length)];
+      const row = validRows[Math.floor(Math.random() * validRows.length)];
+
+      // Check if this position is occupied by a log
+      const logs = this.logManager ? this.logManager.getAllLogs() : [];
+      let logOccupied = false;
+      for (const log of logs) {
+        if (log.gridCol === col) {
+          // Check vertical overlap
+          const logY = log.y;
+          const frogY = row * TILE;
+          if (logY <= frogY + TILE && logY + log.height >= frogY - TILE) {
+            logOccupied = true;
+            break;
+          }
+        }
+      }
+
+      if (!logOccupied) {
+        // Spawn the power-up
+        this.powerUp = new PowerUp(this, col, row);
+        spawned = true;
+      }
+
+      attempts++;
+    }
+
+    // Schedule next spawn
+    this.powerUpTimer = this.time.delayedCall(POWERUP_SPAWN_INTERVAL, () => {
+      this.spawnPowerUp();
     });
   }
 
@@ -108,7 +165,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Update gator (input + cooldowns)
     if (this.gator && this.cursors) {
-      this.gator.handleInput(this.cursors);
+      this.gator.handleInput(this.cursors, delta);
       this.gator.update(delta);
     }
 
@@ -126,7 +183,8 @@ export default class GameScene extends Phaser.Scene {
         this.frogSpawner ? this.frogSpawner.frogs : [],
         this.logManager ? this.logManager.getAllLogs() : [],
         this.lilyPads,
-        this.gameState
+        this.gameState,
+        this.powerUp
       );
     }
 
@@ -209,6 +267,18 @@ export default class GameScene extends Phaser.Scene {
     // Clean up timers and listeners to prevent leaks on restart
     this.time.removeAllEvents();
     this.input.keyboard.removeAllListeners();
+    
+    // Clean up power-up timer
+    if (this.powerUpTimer) {
+      this.powerUpTimer.remove();
+      this.powerUpTimer = null;
+    }
+    
+    // Clean up active power-up
+    if (this.powerUp) {
+      this.powerUp.destroy();
+      this.powerUp = null;
+    }
   }
 
   // Entity management helpers

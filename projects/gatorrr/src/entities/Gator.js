@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, TILE, MOVE_DURATION } from '../constants.js';
+import { C, GATOR_START, TILE, MOVE_DURATION, MOVE_HOLD_DELAY } from '../constants.js';
 
 export default class Gator extends Phaser.GameObjects.Sprite {
   constructor(scene, col, row) {
@@ -11,6 +11,8 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     this.hp = 3;
     this.damageCooldown = 0;
     this.moving = false;
+    this.holdTimer = 0;      // tracks how long current key has been held
+    this.lastDir = null;     // last direction key held
 
     this.setOrigin(0);
     this.setDisplaySize(TILE, TILE);
@@ -22,31 +24,53 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     this.body.setSize(TILE, TILE);
   }
 
-  handleInput(cursors) {
-    if (this.moving) return; // block input while mid-tween
+  handleInput(cursors, delta) {
+    // Determine which direction (if any) is currently held
+    let dir = null;
+    if (cursors.left.isDown)       dir = 'left';
+    else if (cursors.right.isDown) dir = 'right';
+    else if (cursors.up.isDown)    dir = 'up';
+    else if (cursors.down.isDown)  dir = 'down';
+
+    // Reset hold timer if direction changed or released
+    if (dir !== this.lastDir) {
+      this.holdTimer = 0;
+      this.lastDir = dir;
+    }
+
+    if (!dir) return; // no key held
+
+    const { JustDown } = Phaser.Input.Keyboard;
+    const justPressed =
+      (dir === 'left'  && JustDown(cursors.left))  ||
+      (dir === 'right' && JustDown(cursors.right)) ||
+      (dir === 'up'    && JustDown(cursors.up))    ||
+      (dir === 'down'  && JustDown(cursors.down));
+
+    // Accumulate hold time
+    this.holdTimer += delta;
+
+    // Move on: fresh tap, OR after hold delay while animation is free
+    const shouldMove = justPressed || (this.holdTimer >= MOVE_HOLD_DELAY && !this.moving);
+
+    if (!shouldMove || this.moving) return;
 
     let targetCol = this.gridCol;
     let targetRow = this.gridRow;
     let flip = null;
 
-    if (cursors.left.isDown && this.gridCol > 0) {
-      targetCol--;
-      flip = true;
-    } else if (cursors.right.isDown && this.gridCol < 19) {
-      targetCol++;
-      flip = false;
-    } else if (cursors.up.isDown && this.gridRow > 0) {
-      targetRow--;
-    } else if (cursors.down.isDown && this.gridRow < 10) {
-      targetRow++;
-    } else {
-      return; // no input
-    }
+    if (dir === 'left' && this.gridCol > 0)       { targetCol--; flip = true; }
+    else if (dir === 'right' && this.gridCol < 19) { targetCol++; flip = false; }
+    else if (dir === 'up' && this.gridRow > 0)     { targetRow--; }
+    else if (dir === 'down' && this.gridRow < 10)  { targetRow++; }
+    else return; // at boundary
 
     this.gridCol = targetCol;
     this.gridRow = targetRow;
     if (flip !== null) this.setFlipX(flip);
     this.moving = true;
+    // Reset hold timer so next repeat waits another delay
+    this.holdTimer = 0;
 
     this.scene.tweens.add({
       targets: this,

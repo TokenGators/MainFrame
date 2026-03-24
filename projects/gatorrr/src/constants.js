@@ -39,6 +39,7 @@ export const C = {
 
 // Movement
 export const MOVE_DURATION = 80; // ms to slide one tile
+export const MOVE_HOLD_DELAY = 250; // ms before hold-to-move kicks in after first move
 
 // Log columns (river spans cols 2-16 = 15 columns)
 export const NUM_LOG_COLUMNS = 15;
@@ -66,6 +67,11 @@ export const LOG_COUNT_RAMP = 1;    // +1 log per column per ramp step (max 4)
 
 // Difficulty ramp interval (milliseconds)
 export const RAMP_INTERVAL = 30000; // ramp difficulty every 30 seconds
+
+// Power-Up System (C1)
+export const POWERUP_SPAWN_INTERVAL = 20000; // ms between spawns
+export const POWERUP_DURATION = 8000; // ms visible before despawn
+export const POWERUP_HP_RESTORE = 1; // HP restored on collect
 
 // Lily pad positions (grid coords)
 export const LILY_PAD_POSITIONS = [
@@ -96,3 +102,6 @@ export const FROG_TYPES = {
 };
 
 export const FROG_SPAWN_WEIGHTS = { green: 60, blue: 25, purple: 10, red: 4, gold: 1 };
+
+// Frog AI Constants (C2)
+export const FROG_SMARTNESS = 0.75; // 0.0 = always jumps blindly, 1.0 = never jumps into water

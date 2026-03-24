@@ -10,7 +10,7 @@ export default class LogColumnManager {
     // Create columns of logs
     for (let i = 0; i < NUM_LOG_COLUMNS; i++) {
       const colIndex = i + 2; // Start from column 2 to cover full river (cols 2-16)
-      const direction = (colIndex % 2 === 0) ? 1 : -1; // alternating direction
+      const direction = Math.random() < 0.5 ? 1 : -1; // randomized direction per column
       const speed = (Math.random() * (LOG_SPEED_MAX - LOG_SPEED_MIN) + LOG_SPEED_MIN) * direction;
 
       this.columns.push({

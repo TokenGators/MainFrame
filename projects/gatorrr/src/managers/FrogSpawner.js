@@ -50,11 +50,12 @@ export default class FrogSpawner {
   }
   
   spawnFrog() {
-    // Spawn at col 17 (right bank), random row (1-10)
+    // Spawn at col 17-19 (right bank), random row (1-10)
     const row = Math.floor(Math.random() * 9) + 1; // 1 to 10
+    const col = Math.floor(Math.random() * 3) + 17; // 17, 18, or 19
     const type = this.getRandomFrogType();
     
-    const frog = new Frog(this.scene, 17, row, type);
+    const frog = new Frog(this.scene, col, row, type);
     this.frogs.push(frog);
     
     return frog;

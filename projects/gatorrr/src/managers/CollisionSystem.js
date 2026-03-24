@@ -5,7 +5,7 @@ export default class CollisionSystem {
     this.scene = scene;
   }
 
-  checkAll(gator, frogs, logs, lilyPads, gameState) {
+  checkAll(gator, frogs, logs, lilyPads, gameState, powerUp = null) {
     // Check gator vs logs collision
     this.checkGatorLogCollision(gator, logs, gameState);
 
@@ -14,6 +14,9 @@ export default class CollisionSystem {
 
     // Check frog vs lily pad collision
     this.checkFrogLilyPadCollision(frogs, lilyPads, gameState);
+
+    // Check gator vs powerUp collision
+    this.checkGatorPowerUpCollision(gator, powerUp, gameState);
   }
 
   checkGatorLogCollision(gator, logs, gameState) {
@@ -106,5 +109,13 @@ export default class CollisionSystem {
            obj1.x + obj1.width > obj2.x &&
            obj1.y < obj2.y + obj2.height &&
            obj1.y + obj1.height > obj2.y;
+  }
+
+  checkGatorPowerUpCollision(gator, powerUp, gameState) {
+    if (!powerUp) return;
+
+    if (this.checkRectangleCollision(gator, powerUp)) {
+      powerUp.collect(gator);
+    }
   }
 }
