@@ -162,6 +162,12 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  shutdown() {
+    // Clean up timers and listeners to prevent leaks on restart
+    this.time.removeAllEvents();
+    this.input.keyboard.removeAllListeners();
+  }
+
   // Entity management helpers
   removeFrog(frog) {
     if (this.frogSpawner) {

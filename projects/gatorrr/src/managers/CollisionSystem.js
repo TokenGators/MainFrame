@@ -1,3 +1,5 @@
+import { TILE } from '../constants.js';
+
 export default class CollisionSystem {
   constructor(scene) {
     this.scene = scene;

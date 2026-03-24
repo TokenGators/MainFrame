@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, ZOOM } from './constants.js';
 import BootScene from './scenes/BootScene.js';
+import TitleScene from './scenes/TitleScene.js';
 import GameScene from './scenes/GameScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 
@@ -21,7 +22,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: ZOOM,
   },
-  scene: [BootScene, GameScene, GameOverScene],
+  scene: [BootScene, TitleScene, GameScene, GameOverScene],
 };
 
 new Phaser.Game(config);
