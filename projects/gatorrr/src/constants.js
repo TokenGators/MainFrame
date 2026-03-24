@@ -64,6 +64,9 @@ export const LOG_SPEED_RAMP = 10;   // +10 px/sec per interval
 export const FROG_SPAWN_RAMP = 200; // -200ms spawn interval per ramp step
 export const LOG_COUNT_RAMP = 1;    // +1 log per column per ramp step (max 4)
 
+// Difficulty ramp interval (milliseconds)
+export const RAMP_INTERVAL = 30000; // ramp difficulty every 30 seconds
+
 // Lily pad positions (grid coords)
 export const LILY_PAD_POSITIONS = [
   { col: 1, row: 2 },
@@ -72,3 +75,24 @@ export const LILY_PAD_POSITIONS = [
   { col: 1, row: 7 },
   { col: 1, row: 9 },
 ];
+
+// Score System Constants (B1)
+export const SCORE_FROG_GREEN = 200;
+export const SCORE_FROG_BLUE = 500;
+export const SCORE_FROG_PURPLE = 1000;
+export const SCORE_FROG_RED = 1500;
+export const SCORE_FROG_GOLD = 2000;
+export const SCORE_PAD_PENALTY = 300;
+export const SCORE_WIN_BONUS = 1000;
+export const SCORE_TIME_BONUS_PER_SEC = 10;
+
+// Frog Type System Constants (B2)
+export const FROG_TYPES = {
+  green:  { points: 200,  tint: C.GREEN,   weight: 60 },
+  blue:   { points: 500,  tint: C.BLUE,    weight: 25 },
+  purple: { points: 1000, tint: C.LAVENDER,weight: 10 },
+  red:    { points: 1500, tint: C.RED,     weight: 4  },
+  gold:   { points: 2000, tint: C.YELLOW,  weight: 1  },
+};
+
+export const FROG_SPAWN_WEIGHTS = { green: 60, blue: 25, purple: 10, red: 4, gold: 1 };

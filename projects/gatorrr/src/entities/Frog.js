@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
-import { C, FROG_DECISION_INTERVAL, FROG_JUMP_CHANCE, TILE } from '../constants.js';
+import { C, FROG_DECISION_INTERVAL, FROG_JUMP_CHANCE, TILE, FROG_TYPES } from '../constants.js';
 
 export default class Frog extends Phaser.GameObjects.Sprite {
-  constructor(scene, col, row) {
+  constructor(scene, col, row, type = 'green') {
     super(scene, col * TILE, row * TILE, 'frog');
 
     this.scene = scene;
     this.gridCol = col;
     this.gridRow = row;
+    this.type = type; // 'green', 'blue', 'purple', 'red', 'gold'
     this.state = 'SWIMMING'; // SWIMMING, ON_LOG, VULNERABLE
     this.decisionTimer = 0;
     this.onLogId = null;
@@ -17,6 +18,10 @@ export default class Frog extends Phaser.GameObjects.Sprite {
     this.setOrigin(0);
     this.setDisplaySize(TILE, TILE);
     this.setDepth(2);
+
+    // Apply type-specific tint
+    const tint = FROG_TYPES[type].tint;
+    this.setTint(tint);
 
     // Add to scene
     scene.add.existing(this);

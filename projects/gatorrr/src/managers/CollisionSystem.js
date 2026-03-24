@@ -1,4 +1,4 @@
-import { TILE } from '../constants.js';
+import { TILE, SCORE_PAD_PENALTY, FROG_TYPES } from '../constants.js';
 
 export default class CollisionSystem {
   constructor(scene) {
@@ -29,6 +29,9 @@ export default class CollisionSystem {
 
     for (const frog of frogs) {
       if (this.checkRectangleCollision(gator, frog)) {
+        // Add points based on frog type
+        const points = FROG_TYPES[frog.type].points;
+        gameState.score += points;
         gameState.frogsEaten++;
         toRemove.push(frog);
 
@@ -73,6 +76,9 @@ export default class CollisionSystem {
             if (distance < TILE) {
               pad.fill();
               gameState.padsFilled++;
+              // Apply pad penalty
+              gameState.score -= SCORE_PAD_PENALTY;
+              gameState.padPenaltyTotal += SCORE_PAD_PENALTY;
               if (gameState.padsFilled >= 5) {
                 gameState.gameOver = true;
               }

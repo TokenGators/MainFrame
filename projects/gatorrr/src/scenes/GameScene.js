@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
@@ -19,7 +19,11 @@ export default class GameScene extends Phaser.Scene {
       gameOver: false,
       win: false,
       timeLeft: 60000,
-      score: 0
+      score: 0,
+      winBonus: 0,
+      timeBonus: 0,
+      padPenaltyTotal: 0,
+      frogPointsTotal: 0
     };
 
     this.rampStep = 0;
@@ -92,9 +96,10 @@ export default class GameScene extends Phaser.Scene {
     const style = { fontSize: '8px', fill: '#ffffff', fontFamily: 'monospace' };
     this.hud = {
       hpText:     this.add.text(4,  2, 'HP:',      style).setDepth(10),
-      frogsText:  this.add.text(60, 2, 'FROGS:X/10',  style).setDepth(10),
-      padsText:   this.add.text(130, 2, 'PADS:X/5',   style).setDepth(10),
-      timeText:   this.add.text(200, 2, 'T:XX',     style).setDepth(10),
+      scoreText:  this.add.text(50, 2, 'SCORE:0',  style).setDepth(10),
+      frogsText:  this.add.text(120, 2, 'FROGS:X/10',  style).setDepth(10),
+      padsText:   this.add.text(190, 2, 'PADS:X/5',   style).setDepth(10),
+      timeText:   this.add.text(260, 2, 'T:XX',     style).setDepth(10),
     };
   }
 
@@ -131,6 +136,7 @@ export default class GameScene extends Phaser.Scene {
     // Update HUD
     if (this.hud) {
       this.hud.hpText.setText(`HP: ${this.gameState.hp}/${MAX_HP}`);
+      this.hud.scoreText.setText(`SCORE:${this.gameState.score}`);
       this.hud.frogsText.setText(`Frogs: ${this.gameState.frogsEaten}/10`);
       this.hud.padsText.setText(`Pads: ${this.gameState.padsFilled}/5`);
       this.hud.timeText.setText(`Time: ${Math.ceil(this.gameState.timeLeft / 1000)}`);
@@ -139,14 +145,51 @@ export default class GameScene extends Phaser.Scene {
     // Win / lose
     if (this.gameState.win || this.gameState.hp <= 0 || this.gameState.gameOver) {
       this.gameState.gameOver = true;
+      
+      // Calculate bonuses if won
+      if (this.gameState.win) {
+        this.gameState.winBonus = SCORE_WIN_BONUS;
+        // Time bonus: seconds remaining * 10 points per second
+        const timeSeconds = Math.floor(this.gameState.timeLeft / 1000);
+        this.gameState.timeBonus = timeSeconds * SCORE_TIME_BONUS_PER_SEC;
+        this.gameState.score += this.gameState.winBonus + this.gameState.timeBonus;
+      }
+      
+      // Save to leaderboard before transitioning
+      this.saveToLeaderboard();
+      
       this.scene.start('GameOverScene', { gameState: this.gameState });
+    }
+  }
+
+  saveToLeaderboard() {
+    try {
+      const leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
+      const newEntry = {
+        score: this.gameState.score,
+        level: 1,
+        date: new Date().toISOString()
+      };
+      
+      const combined = [...leaderboard, newEntry];
+      combined.sort((a, b) => b.score - a.score);
+      
+      // Trim to top 5
+      if (combined.length > 5) {
+        combined.length = 5;
+      }
+      
+      localStorage.setItem('gatorrr_leaderboard', JSON.stringify(combined));
+    } catch (e) {
+      // localStorage not available - silently skip
     }
   }
 
   updateTimer() {
     if (!this.gameState.gameOver) {
       this.gameState.timeLeft -= 1000;
-      this.gameState.score += 1;
+      // Score increases by 1 per second as time passes (time bonus tracking)
+      this.gameState.timeBonus += 1;
 
       // Apply difficulty ramp every RAMP_INTERVAL
       const elapsed = 60000 - this.gameState.timeLeft;
