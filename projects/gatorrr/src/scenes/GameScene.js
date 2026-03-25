@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE, LEVEL_CONFIGS } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
@@ -12,15 +12,24 @@ export default class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  init() {
+  init(data) {
+    // Initialize level and score from passed data
+    const level = data?.level || 1;
+    this.currentLevel = level;
+    
+    // Get level config (use last config for levels beyond the defined range)
+    const configIndex = Math.min(level - 1, LEVEL_CONFIGS.length - 1);
+    this.levelConfig = LEVEL_CONFIGS[configIndex];
+    
     this.gameState = {
+      currentLevel: level,
       hp: MAX_HP,
       frogsEaten: 0,
       padsFilled: 0,
       gameOver: false,
       win: false,
       timeLeft: 60000,
-      score: 0,
+      score: data?.score !== undefined ? data.score : 0,
       winBonus: 0,
       timeBonus: 0,
       padPenaltyTotal: 0,
@@ -44,8 +53,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.gator = new Gator(this, GATOR_START.col, GATOR_START.row);
 
-    this.frogSpawner = new FrogSpawner(this);
-    this.logManager = new LogColumnManager(this);
+    // Pass level config to managers
+    this.frogSpawner = new FrogSpawner(this, this.levelConfig);
+    this.logManager = new LogColumnManager(this, this.levelConfig);
     this.collisionSystem = new CollisionSystem(this);
 
     this.createBackground();
@@ -152,11 +162,12 @@ export default class GameScene extends Phaser.Scene {
   createHUD() {
     const style = { fontSize: '8px', fill: '#ffffff', fontFamily: 'monospace' };
     this.hud = {
-      hpText:     this.add.text(4,  2, 'HP:',      style).setDepth(10),
-      scoreText:  this.add.text(50, 2, 'SCORE:0',  style).setDepth(10),
-      frogsText:  this.add.text(120, 2, 'FROGS:X/10',  style).setDepth(10),
-      padsText:   this.add.text(190, 2, 'PADS:X/5',   style).setDepth(10),
-      timeText:   this.add.text(260, 2, 'T:XX',     style).setDepth(10),
+      levelText:  this.add.text(4,  2, 'LVL:1',     style).setDepth(10),
+      hpText:     this.add.text(50, 2, 'HP:',       style).setDepth(10),
+      scoreText:  this.add.text(100, 2, 'SCORE:0',  style).setDepth(10),
+      frogsText:  this.add.text(160, 2, 'FROGS:X/10', style).setDepth(10),
+      padsText:   this.add.text(230, 2, 'PADS:X/5',   style).setDepth(10),
+      timeText:   this.add.text(300, 2, 'T:XX',     style).setDepth(10),
     };
   }
 
@@ -193,6 +204,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Update HUD
     if (this.hud) {
+      this.hud.levelText.setText(`LVL:${this.currentLevel}`);
       this.hud.hpText.setText(`HP: ${this.gameState.hp}/${MAX_HP}`);
       this.hud.scoreText.setText(`SCORE:${this.gameState.score}`);
       this.hud.frogsText.setText(`Frogs: ${this.gameState.frogsEaten}/10`);
@@ -213,6 +225,12 @@ export default class GameScene extends Phaser.Scene {
         this.gameState.score += this.gameState.winBonus + this.gameState.timeBonus;
       }
       
+      // If win (10 frogs eaten), go to LevelClearScene
+      if (this.gameState.win) {
+        this.scene.start('LevelClearScene', { level: this.currentLevel, score: this.gameState.score });
+        return;
+      }
+      
       // Save to leaderboard before transitioning
       this.saveToLeaderboard();
       
@@ -225,7 +243,7 @@ export default class GameScene extends Phaser.Scene {
       const leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
       const newEntry = {
         score: this.gameState.score,
-        level: 1,
+        level: this.gameState.currentLevel || 1,
         date: new Date().toISOString()
       };
       
@@ -248,12 +266,6 @@ export default class GameScene extends Phaser.Scene {
       this.gameState.timeLeft -= 1000;
       // Score increases by 1 per second as time passes (time bonus tracking)
       this.gameState.timeBonus += 1;
-
-      // Apply difficulty ramp every RAMP_INTERVAL
-      const elapsed = 60000 - this.gameState.timeLeft;
-      if (elapsed > 0 && elapsed % RAMP_INTERVAL < 1000) {
-        this.applyDifficultyRamp();
-      }
 
       if (this.gameState.timeLeft <= 0) {
         this.gameState.timeLeft = 0;

@@ -1,21 +1,24 @@
-import { FROG_SPAWN_MIN, FROG_SPAWN_MAX, MAX_FROGS_MIN, MAX_FROGS_MAX, FROG_SPAWN_WEIGHTS, FROG_TYPES } from '../constants.js';
+import { FROG_SPAWN_WEIGHTS, FROG_TYPES } from '../constants.js';
 import Frog from '../entities/Frog.js';
 
 export default class FrogSpawner {
-  constructor(scene) {
+  constructor(scene, levelConfig) {
     this.scene = scene;
     this.spawnTimer = 0;
     this.spawnInterval = 0;
     this.frogs = [];
     this.maxFrogs = 0;
+    this.levelConfig = levelConfig || {};
     
-    // Initialize spawn interval and max frogs
+    // Initialize spawn interval and max frogs from level config
     this.reset();
   }
   
   reset() {
-    this.spawnInterval = Math.random() * (FROG_SPAWN_MAX - FROG_SPAWN_MIN) + FROG_SPAWN_MIN;
-    this.maxFrogs = Math.floor(Math.random() * (MAX_FROGS_MAX - MAX_FROGS_MIN) + MAX_FROGS_MIN);
+    const spawnMin = this.levelConfig.spawnMin || 1500;
+    const spawnMax = this.levelConfig.spawnMax || 2250;
+    this.spawnInterval = Math.random() * (spawnMax - spawnMin) + spawnMin;
+    this.maxFrogs = this.levelConfig.maxFrogs || 6;
   }
   
   // Weighted random selection for frog type
@@ -40,7 +43,9 @@ export default class FrogSpawner {
     if (this.frogs.length < this.maxFrogs && this.spawnTimer >= this.spawnInterval) {
       this.spawnFrog();
       this.spawnTimer = 0;
-      this.spawnInterval = Math.random() * (FROG_SPAWN_MAX - FROG_SPAWN_MIN) + FROG_SPAWN_MIN;
+      const spawnMin = this.levelConfig.spawnMin || 1500;
+      const spawnMax = this.levelConfig.spawnMax || 2250;
+      this.spawnInterval = Math.random() * (spawnMax - spawnMin) + spawnMin;
     }
     
     // Update existing frogs

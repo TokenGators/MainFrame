@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { C, FROG_DECISION_INTERVAL, TILE, FROG_TYPES, FROG_SMARTNESS, CANVAS_HEIGHT } from '../constants.js';
 
-export default class Frog extends Phaser.GameObjects.Sprite {
+export default class Frog extends Phaser.GameObjects.Rectangle {
   constructor(scene, col, row, type = 'green') {
-    super(scene, col * TILE, row * TILE, 'frog');
+    super(scene, col * TILE, row * TILE, TILE, TILE);
 
     this.scene = scene;
     this.gridCol = col;
@@ -15,14 +15,11 @@ export default class Frog extends Phaser.GameObjects.Sprite {
     this.currentLog = null;
     this.swimOffset = 0; // For swimming animation
 
-    // Set up graphics properties
+    // Apply type-specific color
+    const color = FROG_TYPES[type].tint;
+    this.setFillStyle(color);
     this.setOrigin(0);
-    this.setDisplaySize(TILE, TILE);
     this.setDepth(2);
-
-    // Apply type-specific tint
-    const tint = FROG_TYPES[type].tint;
-    this.setTint(tint);
 
     // Add to scene
     scene.add.existing(this);
@@ -44,7 +41,8 @@ export default class Frog extends Phaser.GameObjects.Sprite {
         
         // Check if log wrapped off screen
         if (this.currentLog.y > CANVAS_HEIGHT || this.currentLog.y + this.currentLog.height < 0) {
-          // Log wrapped, frog detaches and swims
+          // Log wrapped — sync gridCol/x before detaching so frog stays in the river
+          this.gridCol = Math.floor(this.x / TILE);
           this.currentLog = null;
           this.state = 'SWIMMING';
         }

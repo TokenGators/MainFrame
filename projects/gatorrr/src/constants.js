@@ -105,3 +105,11 @@ export const FROG_SPAWN_WEIGHTS = { green: 60, blue: 25, purple: 10, red: 4, gol
 
 // Frog AI Constants (C2)
 export const FROG_SMARTNESS = 0.75; // 0.0 = always jumps blindly, 1.0 = never jumps into water
+
+// Level System (D1)
+export const LEVEL_CONFIGS = [
+  { logsPerCol: 2, speedMin: 20, speedMax: 50,  spawnMin: 1500, spawnMax: 2250 }, // Level 1
+  { logsPerCol: 2, speedMin: 30, speedMax: 65,  spawnMin: 1250, spawnMax: 2000 }, // Level 2
+  { logsPerCol: 3, speedMin: 40, speedMax: 80,  spawnMin: 1000, spawnMax: 1750 }, // Level 3
+  { logsPerCol: 3, speedMin: 50, speedMax: 95,  spawnMin: 800,  spawnMax: 1500 }, // Level 4+ (max)
+];

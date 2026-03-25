@@ -76,7 +76,7 @@ export default class GameOverScene extends Phaser.Scene {
     // Track time for quick restart
     this.time.delayedCall(300, () => {
       this.input.keyboard.once('keydown-R', () => {
-        this.scene.start('GameScene');
+        this.scene.start('GameScene', { level: 1, score: 0 });
       });
     });
   }
@@ -85,9 +85,10 @@ export default class GameOverScene extends Phaser.Scene {
     try {
       const leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
       const newScore = this.gameState.score;
+      const currentLevel = this.gameState.currentLevel || 1;
       
       // Check if new score would make top 5
-      const combined = [...leaderboard, { score: newScore, level: 1, date: new Date().toISOString() }];
+      const combined = [...leaderboard, { score: newScore, level: currentLevel, date: new Date().toISOString() }];
       combined.sort((a, b) => b.score - a.score);
       
       if (combined.length > 5) {

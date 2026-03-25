@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { C, GATOR_START, TILE, MOVE_DURATION, MOVE_HOLD_DELAY } from '../constants.js';
 
-export default class Gator extends Phaser.GameObjects.Sprite {
+export default class Gator extends Phaser.GameObjects.Rectangle {
   constructor(scene, col, row) {
-    super(scene, col * TILE, row * TILE, 'gator');
+    super(scene, col * TILE, row * TILE, TILE, TILE);
 
     this.scene = scene;
     this.gridCol = col;
@@ -14,8 +14,8 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     this.holdTimer = 0;      // tracks how long current key has been held
     this.lastDir = null;     // last direction key held
 
+    this.setFillStyle(C.GREEN);
     this.setOrigin(0);
-    this.setDisplaySize(TILE, TILE);
     this.setDepth(2);
 
     scene.add.existing(this);
@@ -67,7 +67,7 @@ export default class Gator extends Phaser.GameObjects.Sprite {
 
     this.gridCol = targetCol;
     this.gridRow = targetRow;
-    if (flip !== null) this.setFlipX(flip);
+    // flip: reserved for when sprite art is added
     this.moving = true;
     // Reset hold timer so next repeat waits another delay
     this.holdTimer = 0;
@@ -91,8 +91,8 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     if (this.damageCooldown <= 0) {
       this.hp--;
       this.damageCooldown = 500;
-      this.setTint(0xFF004D);
-      this.scene.time.delayedCall(200, () => { this.clearTint(); });
+      this.setFillStyle(C.RED);
+      this.scene.time.delayedCall(200, () => { this.setFillStyle(C.GREEN); });
     }
   }
 
