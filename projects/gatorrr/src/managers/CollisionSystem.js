@@ -104,11 +104,17 @@ export default class CollisionSystem {
   }
 
   checkRectangleCollision(obj1, obj2) {
-    // All objects use setOrigin(0) so x/y is top-left
-    return obj1.x < obj2.x + obj2.width &&
-           obj1.x + obj1.width > obj2.x &&
-           obj1.y < obj2.y + obj2.height &&
-           obj1.y + obj1.height > obj2.y;
+    // Normalize to top-left bounds regardless of origin
+    // Works for any origin combination: gator (0.5), logs/frogs/pads (0), etc.
+    const left1 = obj1.x - obj1.width * obj1.originX;
+    const top1  = obj1.y - obj1.height * obj1.originY;
+    const left2 = obj2.x - obj2.width * obj2.originX;
+    const top2  = obj2.y - obj2.height * obj2.originY;
+
+    return left1 < left2 + obj2.width &&
+           left1 + obj1.width > left2 &&
+           top1 < top2 + obj2.height &&
+           top1 + obj1.height > top2;
   }
 
   checkGatorPowerUpCollision(gator, powerUp, gameState) {
