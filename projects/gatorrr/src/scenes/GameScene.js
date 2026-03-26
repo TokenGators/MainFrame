@@ -77,7 +77,7 @@ export default class GameScene extends Phaser.Scene {
     // Initialize dev panel if in dev mode
     if (DEV_MODE) {
       this.devPanel = new DevPanel(this);
-      this.devPanel.show(); // Show initially so developer can see it
+      // Panel starts hidden — player opens it with backtick key
     }
     
     // Keyboard listener for dev panel toggle
