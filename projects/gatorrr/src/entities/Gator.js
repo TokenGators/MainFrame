@@ -23,9 +23,7 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.body.setAllowGravity(false);
-    // Physics body offset compensates for centered origin
     this.body.setSize(TILE, TILE);
-    this.body.setOffset(-TILE/2, -TILE/2);
   }
 
   handleInput(cursors, delta) {
