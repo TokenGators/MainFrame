@@ -7,11 +7,15 @@ export default class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // No assets to load — entities use Phaser primitives (Rectangles)
-    // Sprite assets will be loaded here when art is ready (Cycle B+)
+    this.load.image('frog', 'assets/frog.png');
+    this.load.image('gator', 'assets/gator.png');
+
+    this.load.on('complete', () => {
+      this.scene.start('TitleScene');
+    });
   }
 
   create() {
-    this.scene.start('TitleScene');
+    // Intentionally empty — transition handled in preload complete callback
   }
 }
