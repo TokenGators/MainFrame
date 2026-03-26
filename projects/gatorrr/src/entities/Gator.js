@@ -3,7 +3,8 @@ import { C, GATOR_START, TILE, MOVE_DURATION, MOVE_HOLD_DELAY } from '../constan
 
 export default class Gator extends Phaser.GameObjects.Sprite {
   constructor(scene, col, row) {
-    super(scene, col * TILE, row * TILE, 'gator');
+    // Position at center of tile for rotation to work properly
+    super(scene, col * TILE + TILE/2, row * TILE + TILE/2, 'gator');
 
     this.scene = scene;
     this.gridCol = col;
@@ -14,15 +15,17 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     this.holdTimer = 0;      // tracks how long current key has been held
     this.lastDir = null;     // last direction key held
 
-    // Set up graphics properties
-    this.setOrigin(0);
+    // Set up graphics properties - use center origin for proper rotation
+    this.setOrigin(0.5);
     this.setDisplaySize(TILE, TILE);
     this.setDepth(2);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.body.setAllowGravity(false);
+    // Physics body offset compensates for centered origin
     this.body.setSize(TILE, TILE);
+    this.body.setOffset(-TILE/2, -TILE/2);
   }
 
   handleInput(cursors, delta) {
@@ -69,10 +72,11 @@ export default class Gator extends Phaser.GameObjects.Sprite {
     this.gridRow = targetRow;
     this.moving = true;
 
+    // Tween to center of new tile
     this.scene.tweens.add({
       targets: this,
-      x: this.gridCol * TILE,
-      y: this.gridRow * TILE,
+      x: this.gridCol * TILE + TILE / 2,
+      y: this.gridRow * TILE + TILE / 2,
       duration: MOVE_DURATION,
       ease: 'Linear',
       onUpdate: () => {
