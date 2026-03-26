@@ -16,9 +16,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.fetcher import fetch_url_content, fetch_multiple_urls
 from src.processor import process_entry, process_multiple_entries
-from src.storage import init_db, save_entry, write_markdown
+from src.storage import init_db, save_entry, write_markdown, write_to_obsidian_inbox
 
-def ingest_single_url(url: str, db_path: str, vault_dir: str) -> Optional[Dict]:
+def ingest_single_url(url: str, db_path: str, vault_dir: str, obsidian_inbox: Optional[str] = None) -> Optional[Dict]:
     """
     Ingest a single URL through the complete pipeline.
     
@@ -50,8 +50,13 @@ def ingest_single_url(url: str, db_path: str, vault_dir: str) -> Optional[Dict]:
         # 3. Save to database
         save_entry(entry, db_path)
         
-        # 4. Write markdown file
+        # 4. Write markdown file to legacy vault dir
         write_markdown(entry, vault_dir)
+        
+        # 5. Write to Obsidian inbox if configured
+        if obsidian_inbox:
+            obs_path = write_to_obsidian_inbox(entry, obsidian_inbox)
+            print(f"📥 Obsidian inbox: {obs_path}")
         
         print(f"✅ Successfully ingested: {entry.title}")
         
@@ -66,7 +71,7 @@ def ingest_single_url(url: str, db_path: str, vault_dir: str) -> Optional[Dict]:
         print(f"❌ Error processing entry: {str(e)}")
         return None
 
-def ingest_multiple_urls(urls: List[str], db_path: str, vault_dir: str) -> List[Dict]:
+def ingest_multiple_urls(urls: List[str], db_path: str, vault_dir: str, obsidian_inbox: Optional[str] = None) -> List[Dict]:
     """
     Ingest multiple URLs through the complete pipeline.
     
@@ -104,8 +109,13 @@ def ingest_multiple_urls(urls: List[str], db_path: str, vault_dir: str) -> List[
             # Save to database
             save_entry(entry, db_path)
             
-            # Write markdown file
+            # Write markdown file to legacy vault dir
             write_markdown(entry, vault_dir)
+            
+            # Write to Obsidian inbox if configured
+            if obsidian_inbox:
+                obs_path = write_to_obsidian_inbox(entry, obsidian_inbox)
+                print(f"📥 Obsidian inbox: {obs_path}")
             
             results.append({
                 'id': entry.id,
@@ -127,6 +137,7 @@ def main():
     parser.add_argument('urls', nargs='+', help='URL(s) to ingest')
     parser.add_argument('--db-path', default='./data/vault.db', help='Database path (default: ./data/vault.db)')
     parser.add_argument('--vault-dir', default='./vault', help='Vault directory (default: ./vault)')
+    parser.add_argument('--obsidian-inbox', default=None, help='Obsidian inbox path to also write clipped notes to (e.g. /Users/operator/vault/inbox)')
     
     args = parser.parse_args()
     
@@ -134,7 +145,7 @@ def main():
     init_db(args.db_path)
     
     # Process URLs
-    results = ingest_multiple_urls(args.urls, args.db_path, args.vault_dir)
+    results = ingest_multiple_urls(args.urls, args.db_path, args.vault_dir, obsidian_inbox=args.obsidian_inbox)
     
     # Print summary
     print(f"\n📊 Summary: {len(results)} URLs successfully ingested")

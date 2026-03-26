@@ -58,22 +58,16 @@ export default class Gator extends Phaser.GameObjects.Sprite {
 
     let targetCol = this.gridCol;
     let targetRow = this.gridRow;
-    let flip = null;
 
-    if (dir === 'left' && this.gridCol > 0)       { targetCol--; flip = true; }
-    else if (dir === 'right' && this.gridCol < 19) { targetCol++; flip = false; }
-    else if (dir === 'up' && this.gridRow > 0)     { targetRow--; }
-    else if (dir === 'down' && this.gridRow < 10)  { targetRow++; }
+    if (dir === 'left' && this.gridCol > 0)       { targetCol--; this.setAngle(0); this.setFlipX(true); }
+    else if (dir === 'right' && this.gridCol < 19) { targetCol++; this.setAngle(0); this.setFlipX(false); }
+    else if (dir === 'up' && this.gridRow > 0)     { targetRow--; this.setAngle(270); this.setFlipX(false); }
+    else if (dir === 'down' && this.gridRow < 10)  { targetRow++; this.setAngle(90); this.setFlipX(false); }
     else return; // at boundary
 
     this.gridCol = targetCol;
     this.gridRow = targetRow;
     this.moving = true;
-
-    // Set flip based on direction
-    if (flip !== null) {
-      this.setFlipX(flip);
-    }
 
     this.scene.tweens.add({
       targets: this,

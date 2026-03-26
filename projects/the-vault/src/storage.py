@@ -101,8 +101,41 @@ def save_entry(entry: VaultEntry, db_path: str):
     conn.commit()
     conn.close()
 
+def _build_markdown_content(entry: VaultEntry) -> str:
+    """Build the markdown content for a vault entry."""
+    md_content = f"""---
+id: {entry.id}
+url: {entry.url}
+title: {entry.title or ''}
+category: {entry.category or ''}
+tags: {entry.tags or []}
+saved_at: {entry.saved_at}
+saved_by: {entry.saved_by or ''}
+read_time: {entry.read_time or 0} min
+---
+
+# {entry.title or ''}
+
+> {entry.summary or ''}
+
+## Key Points
+"""
+    if entry.key_points:
+        for point in entry.key_points:
+            md_content += f"- {point}\n"
+    else:
+        md_content += "- No key points extracted\n"
+
+    md_content += f"""
+
+## Source
+{entry.url}
+"""
+    return md_content
+
+
 def write_markdown(entry: VaultEntry, vault_dir: str):
-    """Write a markdown sidecar file for the entry."""
+    """Write a markdown sidecar file for the entry (year-month subdirectory structure)."""
     # Create vault directory if it doesn't exist
     os.makedirs(vault_dir, exist_ok=True)
     
@@ -123,39 +156,27 @@ def write_markdown(entry: VaultEntry, vault_dir: str):
     
     filepath = os.path.join(subdir, filename)
     
-    # Create markdown content
-    md_content = f"""---
-id: {entry.id}
-url: {entry.url}
-title: {entry.title or ''}
-category: {entry.category or ''}
-tags: {entry.tags or []}
-saved_at: {entry.saved_at}
-saved_by: {entry.saved_by or ''}
-read_time: {entry.read_time or 0} min
----
+    with open(filepath, 'w') as f:
+        f.write(_build_markdown_content(entry))
 
-# {entry.title or ''}
 
-> {entry.summary or ''}
-
-## Key Points
-"""
-
-    if entry.key_points:
-        for point in entry.key_points:
-            md_content += f"- {point}\n"
+def write_to_obsidian_inbox(entry: VaultEntry, obsidian_inbox: str):
+    """Write a clean markdown file directly to an Obsidian inbox folder (flat, no subdirs)."""
+    os.makedirs(obsidian_inbox, exist_ok=True)
+    
+    # Generate filename from title
+    if entry.title:
+        slug = ''.join(c if c.isalnum() else '-' for c in entry.title.lower()).strip('-')
+        filename = f"{entry.id}-{slug[:60]}.md"
     else:
-        md_content += "- No key points extracted\n"
-
-    md_content += f"""
-
-## Source
-{entry.url}
-"""
+        filename = f"{entry.id}.md"
+    
+    filepath = os.path.join(obsidian_inbox, filename)
     
     with open(filepath, 'w') as f:
-        f.write(md_content)
+        f.write(_build_markdown_content(entry))
+    
+    return filepath
 
 def get_by_url(url: str, db_path: str) -> Optional[VaultEntry]:
     """Get a VaultEntry by URL or None if not found."""

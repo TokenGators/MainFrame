@@ -1,4 +1,4 @@
-import { FROG_SPAWN_WEIGHTS, FROG_TYPES } from '../constants.js';
+import { FROG_SPAWN_WEIGHTS, FROG_TYPES, CANVAS_HEIGHT, TILE } from '../constants.js';
 import Frog from '../entities/Frog.js';
 
 export default class FrogSpawner {
@@ -51,6 +51,13 @@ export default class FrogSpawner {
     // Update existing frogs
     for (const frog of this.frogs) {
       frog.update(delta, this.scene.logManager ? this.scene.logManager.getAllLogs() : []);
+    }
+    
+    // Remove frogs that are out of bounds
+    for (const frog of [...this.frogs]) {
+      if (frog.y < -TILE || frog.y > CANVAS_HEIGHT + TILE || frog.gridCol < 0) {
+        this.removeFrog(frog);
+      }
     }
   }
   
