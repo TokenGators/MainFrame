@@ -56,4 +56,19 @@ export default class LogColumnManager {
   getAllLogs() {
     return this.logs;
   }
+
+  reinitialize(logsPerCol) {
+    // Destroy all existing log objects
+    for (const log of this.logs) {
+      log.destroy();
+    }
+    
+    // Clear arrays
+    this.logs = [];
+    this.columns = [];
+    
+    // Re-initialize columns with new log count
+    this.levelConfig.logsPerCol = logsPerCol;
+    this.initializeColumns(logsPerCol);
+  }
 }

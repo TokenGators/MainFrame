@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, RAMP_INTERVAL, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE, LEVEL_CONFIGS } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE, LEVEL_CONFIGS, DEV_MODE } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
 import CollisionSystem from '../managers/CollisionSystem.js';
 import LilyPad from '../entities/LilyPad.js';
 import PowerUp from '../entities/PowerUp.js';
+import DevPanel from '../ui/DevPanel.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -72,6 +73,19 @@ export default class GameScene extends Phaser.Scene {
 
     // Start power-up spawn timer
     this.startPowerUpTimer();
+    
+    // Initialize dev panel if in dev mode
+    if (DEV_MODE) {
+      this.devPanel = new DevPanel(this);
+      this.devPanel.show(); // Show initially so developer can see it
+    }
+    
+    // Keyboard listener for dev panel toggle
+    this.input.keyboard.on('keydown', (event) => {
+      if (event.key === '`' && DEV_MODE) {
+        this.devPanel?.toggle();
+      }
+    });
   }
 
   startPowerUpTimer() {
@@ -279,6 +293,12 @@ export default class GameScene extends Phaser.Scene {
     // Clean up timers and listeners to prevent leaks on restart
     this.time.removeAllEvents();
     this.input.keyboard.removeAllListeners();
+    
+    // Clean up dev panel
+    if (this.devPanel) {
+      this.devPanel.destroy();
+      this.devPanel = null;
+    }
     
     // Clean up power-up timer
     if (this.powerUpTimer) {

@@ -118,7 +118,10 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
       }
     }
     
-    // Smart jump (FROG_SMARTNESS) or dumb jump (1 - FROG_SMARTNESS)
+    // Use scene override if present, otherwise fall back to constant
+    const smartness = this.scene.frogSmartness !== undefined ? this.scene.frogSmartness : 0.75;
+    
+    // Smart jump (smartness) or dumb jump (1 - smartness)
     if (logFound) {
       // Log found in landing zone, jump onto it
       for (const log of logs) {
@@ -131,7 +134,7 @@ export default class Frog extends Phaser.GameObjects.Rectangle {
           return;
         }
       }
-    } else if (Math.random() < (1 - FROG_SMARTNESS)) {
+    } else if (Math.random() < (1 - smartness)) {
       // No log found but dumb jump - jump into water
       this.state = 'SWIMMING';
       this.gridCol = landingZoneCol;

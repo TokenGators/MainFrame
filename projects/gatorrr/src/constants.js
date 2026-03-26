@@ -113,3 +113,6 @@ export const LEVEL_CONFIGS = [
   { logsPerCol: 3, speedMin: 40, speedMax: 80,  spawnMin: 1000, spawnMax: 1750 }, // Level 3
   { logsPerCol: 3, speedMin: 50, speedMax: 95,  spawnMin: 800,  spawnMax: 1500 }, // Level 4+ (max)
 ];
+
+// Dev Mode (E1)
+export const DEV_MODE = true; // Set to false before any public build
