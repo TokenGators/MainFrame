@@ -68,7 +68,11 @@ export default class DevPanel {
       </div>
     `;
 
-    this.panel.innerHTML = `<div style="margin-bottom: 10px; font-weight: bold;">Dev Tuning Panel</div>` + sliders;
+    this.panel.innerHTML = `
+      <div style="margin-bottom: 10px; font-weight: bold;">Dev Tuning Panel <small style="font-weight:normal; opacity:0.6;">[ \` to toggle]</small></div>
+      ${sliders}
+      <button id="dev-close" style="margin-top: 8px; width: 100%; padding: 6px; background: #333; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-family: monospace;">▶ Resume Game</button>
+    `;
     document.body.appendChild(this.panel);
 
     // Initialize slider values from current state
@@ -100,6 +104,11 @@ export default class DevPanel {
         // Apply immediately
         this.applyValues();
       });
+    });
+
+    // Close button handler
+    document.getElementById('dev-close').addEventListener('click', () => {
+      this.hide();
     });
   }
 
