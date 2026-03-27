@@ -36,6 +36,7 @@ export default class Frog extends Phaser.GameObjects.Sprite {
     // Handle state-specific behavior
     if (this.state === 'ON_LOG') {
       // Ride the log vertically
+      this.alpha = 1; // Reset alpha for ON_LOG state
       if (this.currentLog) {
         this.y = this.currentLog.y + this.logOffset;
         
@@ -85,10 +86,10 @@ export default class Frog extends Phaser.GameObjects.Sprite {
   }
 
   decideOnBank(logs) {
-    // Check if a log in col 16 overlaps with this frog's row
-    const frogY = this.y;
+    // Check if a log in col 16 overlaps with this frog's row (centered origin)
+    const frogCenter = this.y;
     const logOverlapY = (log) => 
-      log.y <= frogY + TILE && log.y + log.height >= frogY - TILE;
+      log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
     
     for (const log of logs) {
       if (log.gridCol === 16 && logOverlapY(log)) {
@@ -103,12 +104,12 @@ export default class Frog extends Phaser.GameObjects.Sprite {
   }
 
   decideOnLog(logs) {
-    const frogY = this.y;
+    const frogCenter = this.y;
     const landingZoneCol = this.gridCol - 1;
     
-    // Check if a log is in the landing zone (col to left)
+    // Check if a log is in the landing zone (col to left) - centered origin
     const logOverlapY = (log) => 
-      log.y <= frogY + TILE && log.y + log.height >= frogY - TILE;
+      log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
     
     let logFound = false;
     for (const log of logs) {
@@ -149,10 +150,10 @@ export default class Frog extends Phaser.GameObjects.Sprite {
     this.gridCol -= 1;
     this.x = this.gridCol * TILE;
 
-    // Check if we can jump onto a log
-    const frogY = this.y;
+    // Check if we can jump onto a log (using centered origin)
+    const frogCenter = this.y;
     const logOverlapY = (log) => 
-      log.y <= frogY + TILE && log.y + log.height >= frogY - TILE;
+      log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
     
     for (const log of logs) {
       if (log.gridCol === this.gridCol && logOverlapY(log)) {
@@ -160,6 +161,7 @@ export default class Frog extends Phaser.GameObjects.Sprite {
         this.state = 'ON_LOG';
         this.currentLog = log;
         this.logOffset = this.y - log.y;
+        this.alpha = 1; // Reset alpha when jumping out of water
         return;
       }
     }
