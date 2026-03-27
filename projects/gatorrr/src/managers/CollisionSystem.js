@@ -1,4 +1,5 @@
-import { TILE, SCORE_PAD_PENALTY, FROG_TYPES } from '../constants.js';
+import { TILE, SCORE_PAD_PENALTY, FROG_TYPES, POPUP_DURATION } from '../constants.js';
+import ScorePopup from '../ui/ScorePopup.js';
 
 export default class CollisionSystem {
   constructor(scene) {
@@ -37,6 +38,18 @@ export default class CollisionSystem {
         gameState.score += points;
         gameState.frogsEaten++;
         toRemove.push(frog);
+
+        // Spawn score popup
+        const popup = new ScorePopup(
+          this.scene,
+          frog.x + TILE / 2,
+          frog.y,
+          points,
+          FROG_TYPES[frog.type].tint
+        );
+
+        // Play eat sound
+        this.scene.sound?.play?.('eat');
 
         // Check win condition
         if (gameState.frogsEaten >= 10) {
@@ -82,6 +95,15 @@ export default class CollisionSystem {
               // Apply pad penalty
               gameState.score -= SCORE_PAD_PENALTY;
               gameState.padPenaltyTotal += SCORE_PAD_PENALTY;
+
+              // Play pad fill sound
+              this.scene.sound?.play?.('padFill');
+
+              // Trigger pad flash effect (if available on scene)
+              if (this.scene.triggerPadFlash) {
+                this.scene.triggerPadFlash();
+              }
+
               if (gameState.padsFilled >= 5) {
                 gameState.gameOver = true;
               }

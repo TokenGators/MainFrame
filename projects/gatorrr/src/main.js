@@ -4,6 +4,8 @@ import BootScene from './scenes/BootScene.js';
 import TitleScene from './scenes/TitleScene.js';
 import GameScene from './scenes/GameScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import LevelClearScene from './scenes/LevelClearScene.js';
+import LeaderboardScene from './scenes/LeaderboardScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -22,7 +24,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: ZOOM,
   },
-  scene: [BootScene, TitleScene, GameScene, GameOverScene],
+  scene: [BootScene, TitleScene, GameScene, LevelClearScene, GameOverScene, LeaderboardScene],
 };
 
 new Phaser.Game(config);

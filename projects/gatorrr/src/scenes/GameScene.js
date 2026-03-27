@@ -7,6 +7,7 @@ import CollisionSystem from '../managers/CollisionSystem.js';
 import LilyPad from '../entities/LilyPad.js';
 import PowerUp from '../entities/PowerUp.js';
 import DevPanel from '../ui/DevPanel.js';
+import SoundManager from '../audio/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -47,6 +48,8 @@ export default class GameScene extends Phaser.Scene {
     this.hud = null;
     this.powerUp = null;
     this.powerUpTimer = null;
+    this.sound = null;
+    this.padFlash = null;
   }
 
   create() {
@@ -62,6 +65,23 @@ export default class GameScene extends Phaser.Scene {
     this.createBackground();
     this.createLilyPads();
     this.createHUD();
+
+    // Initialize sound manager
+    this.sound = new SoundManager();
+
+    // Initialize pad flash overlay
+    this.padFlash = this.add.rectangle(
+      CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2,
+      CANVAS_WIDTH, CANVAS_HEIGHT,
+      0xFF004D, 0
+    ).setDepth(100).setOrigin(0.5);
+
+    // Resume audio context on first keypress
+    this.input.keyboard.once('keydown', () => {
+      if (this.sound.ctx.state === 'suspended') {
+        this.sound.ctx.resume();
+      }
+    });
 
     // Countdown timer — fires every second
     this.time.addEvent({
@@ -287,6 +307,24 @@ export default class GameScene extends Phaser.Scene {
         this.scene.start('GameOverScene', { gameState: this.gameState });
       }
     }
+  }
+
+  triggerPadFlash() {
+    // Screen edge red flash on pad fill
+    this.tweens.add({
+      targets: this.padFlash,
+      alpha: 0.4,
+      duration: 50,
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.padFlash,
+          alpha: 0,
+          duration: 250,
+          ease: 'Power2'
+        });
+      }
+    });
   }
 
   shutdown() {

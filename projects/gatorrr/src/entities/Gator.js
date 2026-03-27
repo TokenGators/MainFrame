@@ -94,6 +94,8 @@ export default class Gator extends Phaser.GameObjects.Sprite {
       this.scene.time.delayedCall(200, () => {
         this.clearTint();
       });
+      // Play damage sound
+      this.scene.sound?.play?.('damage');
     }
   }
 

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC } from '../constants.js';
+import SoundManager from '../audio/SoundManager.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -66,42 +67,16 @@ export default class GameOverScene extends Phaser.Scene {
     // Total score
     this.add.text(centerX, centerY + 60, `Total: ${totalScore}`, { ...style, color: '#FFA300', fontSize: '18px' }).setOrigin(0.5);
 
-    // Leaderboard status
-    this.showLeaderboardStatus(centerX, centerY + 84);
-
-    // Restart prompt
-    const restartStyle = { fontSize: '14px', color: '#00E436' };
-    this.add.text(centerX, centerY + 120, 'Press R to restart', restartStyle).setOrigin(0.5);
-
-    // Track time for quick restart
-    this.time.delayedCall(300, () => {
-      this.input.keyboard.once('keydown-R', () => {
-        this.scene.start('GameScene', { level: 1, score: 0 });
-      });
-    });
-  }
-
-  showLeaderboardStatus(centerX, y) {
-    try {
-      const leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
-      const newScore = this.gameState.score;
-      const currentLevel = this.gameState.currentLevel || 1;
-      
-      // Check if new score would make top 5
-      const combined = [...leaderboard, { score: newScore, level: currentLevel, date: new Date().toISOString() }];
-      combined.sort((a, b) => b.score - a.score);
-      
-      if (combined.length > 5) {
-        combined.length = 5;
-      }
-      
-      const rank = combined.findIndex(entry => entry.score === newScore && entry.date === (new Date().toISOString())) + 1;
-      
-      const statusText = rank <= 5 && rank > 0 ? `Rank #${rank} on leaderboard!` : `New High Score!`;
-      
-      this.add.text(centerX, y, statusText, { fontSize: '14px', color: '#FFA300' }).setOrigin(0.5);
-    } catch (e) {
-      // localStorage not available - silently skip
+    // Play game over sound
+    const sound = new SoundManager();
+    if (sound.ctx.state === 'suspended') {
+      sound.ctx.resume();
     }
+    sound.play('gameOver');
+
+    // Transition to leaderboard after 2 seconds
+    this.time.delayedCall(2000, () => {
+      this.scene.start('LeaderboardScene', { score: totalScore, level: this.gameState.currentLevel || 1 });
+    });
   }
 }

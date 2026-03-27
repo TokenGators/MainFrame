@@ -189,10 +189,52 @@ Expected: Popup handles scene destruction gracefully (tween completes or is canc
 
 ---
 
+## Section 6 — Known Bugs (Regression Tests)
+
+These bugs were reported before Cycle F. Verify they are fixed as part of this QA pass.
+
+**TC-F-25**
+Given: Dev panel is open and a slider has been interacted with (slider has browser focus)
+When: Player clicks the "Resume Game" button
+Then: Panel closes and game resumes
+Expected: "Resume Game" button always works regardless of which element has focus
+
+**TC-F-26**
+Given: Dev panel is open
+When: Player presses backtick key WITHOUT having clicked any slider (Phaser has focus)
+Then: Panel closes and game resumes
+Expected: Backtick toggle works when Phaser retains keyboard focus
+
+**TC-F-27**
+Given: Game is in progress, gator is directly on the same tile as a frog
+When: Collision is checked
+Then: Frog is eaten — score increases, frog disappears
+Expected: Eating detection is accurate — gator must visually overlap the frog, not just be adjacent
+
+**TC-F-28**
+Given: Gator is one tile away from a frog (not overlapping)
+When: Collision is checked
+Then: Frog is NOT eaten
+Expected: No false positive eats — adjacency alone should not trigger an eat
+
+**TC-F-29**
+Given: Frogs are crossing the river (ON_BANK, ON_LOG, SWIMMING states)
+When: Player observes frog behavior over 60 seconds
+Then: Frogs generally move left toward lily pads, ride logs, occasionally fall in water
+Expected: No frogs stuck in loops, no frogs teleporting, no frogs moving in wrong direction
+
+**TC-F-30**
+Given: A frog is SWIMMING
+When: The frog reaches column 0 or below
+Then: Frog is removed from the game
+Expected: No frogs escaping the left edge of the screen
+
+---
+
 ## Reporting
 
 QA report must include:
-- PASS or FAIL for every test case (TC-F-01 through TC-F-24)
+- PASS or FAIL for every test case (TC-F-01 through TC-F-30)
 - For each FAIL: observed behavior, expected behavior, responsible file/method
 - Any additional anomalies observed
 

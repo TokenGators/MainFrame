@@ -27,6 +27,16 @@ export default class LilyPad extends Phaser.GameObjects.Rectangle {
   fill() {
     this.filled = true;
     this.setFillStyle(C.DARK_RED);
+
+    // Add a brief scale pulse
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.4,
+      scaleY: 1.4,
+      duration: 100,
+      yoyo: true,
+      ease: 'Power2'
+    });
   }
 
   getPixelPos() {

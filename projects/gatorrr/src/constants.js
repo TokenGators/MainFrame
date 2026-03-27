@@ -116,3 +116,7 @@ export const LEVEL_CONFIGS = [
 
 // Dev Mode (E1)
 export const DEV_MODE = true; // Set to false before any public build
+
+// Polish & Feel Constants (F1-F4)
+export const POPUP_FLOAT_DISTANCE = 40; // px upward
+export const POPUP_DURATION = 900; // ms
