@@ -156,15 +156,15 @@ def fetch_article_content(url: str, timeout: int = 15) -> FetchResult:
         author = getattr(metadata, 'author', '') or ''
         published = getattr(metadata, 'date', '') or ''
         
-        # Extract text content
+        # Extract content as markdown to preserve structure (headers, lists, etc.)
         content = trafilatura.extract(
             downloaded,
-            include_tables=False,
+            include_tables=True,
             include_images=False,
-            include_links=False,
+            include_links=True,
             include_comments=False,
             include_formatting=True,
-            output_format='txt'
+            output_format='markdown'
         )
         
         if not content:

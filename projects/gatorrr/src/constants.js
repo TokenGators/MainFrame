@@ -95,10 +95,10 @@ export const SCORE_TIME_BONUS_PER_SEC = 10;
 // Frog Type System Constants (B2)
 // Purple frog removed in Cycle F - all frog types now have dedicated sprites
 export const FROG_TYPES = {
-  green:  { points: 200,  sprite: 'frog',      weight: 65 },
-  blue:   { points: 500,  sprite: 'frog_blue', weight: 25 },
-  red:    { points: 1500, sprite: 'frog_red',  weight: 8  },
-  gold:   { points: 2000, sprite: 'frog_gold', weight: 2  },
+  green:  { points: 200,  sprite: 'frog',      color: 0x00E436, weight: 65 },
+  blue:   { points: 500,  sprite: 'frog_blue', color: 0x29ADFF, weight: 25 },
+  red:    { points: 1500, sprite: 'frog_red',  color: 0xFF004D, weight: 8  },
+  gold:   { points: 2000, sprite: 'frog_gold', color: 0xFFEC27, weight: 2  },
 };
 
 export const FROG_SPAWN_WEIGHTS = { green: 65, blue: 25, red: 8, gold: 2 };

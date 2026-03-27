@@ -45,7 +45,7 @@ export default class CollisionSystem {
           frog.x + TILE / 2,
           frog.y,
           points,
-          FROG_TYPES[frog.type].tint
+          FROG_TYPES[frog.type].color
         );
 
         // Play eat sound

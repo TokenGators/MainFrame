@@ -101,8 +101,14 @@ def save_entry(entry: VaultEntry, db_path: str):
     conn.commit()
     conn.close()
 
-def _build_markdown_content(entry: VaultEntry) -> str:
-    """Build the markdown content for a vault entry."""
+def _build_markdown_content(entry: VaultEntry, full_content: bool = False) -> str:
+    """Build the markdown content for a vault entry.
+    
+    Args:
+        entry: The vault entry to format
+        full_content: If True, include the full raw_content body for indexing (Obsidian).
+                      If False, include only the digest (DB sidecar / legacy vault).
+    """
     md_content = f"""---
 id: {entry.id}
 url: {entry.url}
@@ -116,7 +122,8 @@ read_time: {entry.read_time or 0} min
 
 # {entry.title or ''}
 
-> {entry.summary or ''}
+## Summary
+{entry.summary or ''}
 
 ## Key Points
 """
@@ -126,8 +133,14 @@ read_time: {entry.read_time or 0} min
     else:
         md_content += "- No key points extracted\n"
 
-    md_content += f"""
+    if full_content and entry.raw_content:
+        md_content += f"""
+## Full Content
 
+{entry.raw_content}
+"""
+
+    md_content += f"""
 ## Source
 {entry.url}
 """
@@ -157,7 +170,7 @@ def write_markdown(entry: VaultEntry, vault_dir: str):
     filepath = os.path.join(subdir, filename)
     
     with open(filepath, 'w') as f:
-        f.write(_build_markdown_content(entry))
+        f.write(_build_markdown_content(entry, full_content=False))
 
 
 def write_to_obsidian_inbox(entry: VaultEntry, obsidian_inbox: str):
@@ -174,7 +187,7 @@ def write_to_obsidian_inbox(entry: VaultEntry, obsidian_inbox: str):
     filepath = os.path.join(obsidian_inbox, filename)
     
     with open(filepath, 'w') as f:
-        f.write(_build_markdown_content(entry))
+        f.write(_build_markdown_content(entry, full_content=True))
     
     return filepath
 
