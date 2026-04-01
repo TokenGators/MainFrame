@@ -46,6 +46,9 @@ export const NUM_LOG_COLUMNS = 15;
 
 // Gameplay
 export const GATOR_START = { col: 0, row: 5 };
+export const GATOR_START_COL = 0;
+export const RIVER_MIN_COL = 2;
+export const RIVER_MAX_COL = 16;
 export const MAX_HP = 3;
 export const FROGS_TO_WIN = 10;
 export const TOTAL_PADS = 5;
@@ -73,6 +76,15 @@ export const POWERUP_SPAWN_INTERVAL = 20000; // ms between spawns
 export const POWERUP_DURATION = 8000; // ms visible before despawn
 export const POWERUP_HP_RESTORE = 1; // HP restored on collect
 
+// Dive Mode (E2)
+export const DIVE_BREATH_MAX = 3000; // ms of dive time
+export const DIVE_BREATH_REGEN_RATE = 1; // breath per ms while surfaced
+export const DIVE_SURFACE_ALPHA = 0.4; // alpha for surface objects while diving
+
+// Bite Mode (E3)
+export const BITE_START_COUNT = 3; // bites per level
+export const BITE_LOG_BONUS = 100; // points for destroying a log
+
 // Lily pad positions (grid coords)
 export const LILY_PAD_POSITIONS = [
   { col: 1, row: 2 },
@@ -91,6 +103,7 @@ export const SCORE_FROG_GOLD = 2000;
 export const SCORE_PAD_PENALTY = 300;
 export const SCORE_WIN_BONUS = 1000;
 export const SCORE_TIME_BONUS_PER_SEC = 10;
+export const SCORE_LOG_BREAK = 100; // per log segment destroyed by bite
 
 // Frog Type System Constants (B2)
 // Purple frog removed in Cycle F - all frog types now have dedicated sprites

@@ -1,4 +1,4 @@
-import { TILE, SCORE_PAD_PENALTY, FROG_TYPES, POPUP_DURATION } from '../constants.js';
+import { TILE, SCORE_PAD_PENALTY, FROG_TYPES, POPUP_DURATION, DIVE_SURFACE_ALPHA } from '../constants.js';
 import ScorePopup from '../ui/ScorePopup.js';
 
 export default class CollisionSystem {
@@ -21,6 +21,9 @@ export default class CollisionSystem {
   }
 
   checkGatorLogCollision(gator, logs, gameState) {
+    // Cycle E2: Skip collision if diving
+    if (gator.isDiving) return;
+
     for (const log of logs) {
       if (this.checkRectangleCollision(gator, log)) {
         gator.takeDamage();
@@ -29,6 +32,9 @@ export default class CollisionSystem {
   }
 
   checkGatorFrogCollision(gator, frogs, gameState) {
+    // Cycle E2: Skip collision if diving
+    if (gator.isDiving) return;
+
     const toRemove = [];
 
     for (const frog of frogs) {
@@ -129,9 +135,9 @@ export default class CollisionSystem {
     // Normalize to top-left bounds regardless of origin
     // Works for any origin combination: gator (0.5), logs/frogs/pads (0), etc.
     const left1 = obj1.x - obj1.width * obj1.originX;
-    const top1  = obj1.y - obj1.height * obj1.originY;
+    const top1   = obj1.y - obj1.height * obj1.originY;
     const left2 = obj2.x - obj2.width * obj2.originX;
-    const top2  = obj2.y - obj2.height * obj2.originY;
+    const top2   = obj2.y - obj2.height * obj2.originY;
 
     return left1 < left2 + obj2.width &&
            left1 + obj1.width > left2 &&
@@ -140,18 +146,18 @@ export default class CollisionSystem {
   }
 
   checkGatorPowerUpCollision(gator, powerUp, gameState) {
-  if (!powerUp || !powerUp.active) return;
+    if (!powerUp || !powerUp.active) return;
 
-  // Use physics body bounds for accurate collision (Container width is unreliable)
-  const gb = gator.body;
-  const pb = powerUp.body;
-  if (!gb || !pb) return;
+    // Use physics body bounds for accurate collision (Container width is unreliable)
+    const gb = gator.body;
+    const pb = powerUp.body;
+    if (!gb || !pb) return;
 
-  if (gb.x < pb.x + pb.width &&
-      gb.x + gb.width > pb.x &&
-      gb.y < pb.y + pb.height &&
-      gb.y + pb.height > pb.y) {
-    powerUp.collect(gator);
+    if (gb.x < pb.x + pb.width &&
+        gb.x + gb.width > pb.x &&
+        gb.y < pb.y + pb.height &&
+        gb.y + pb.height > pb.y) {
+      powerUp.collect(gator);
+    }
   }
-}
 }
