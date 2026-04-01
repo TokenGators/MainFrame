@@ -1,88 +1,179 @@
 import Phaser from 'phaser';
-import { C, FROG_DECISION_INTERVAL, FROG_JUMP_CHANCE } from '../constants.js';
+import { FROG_DECISION_INTERVAL, TILE, FROG_TYPES, FROG_SMARTNESS, CANVAS_HEIGHT } from '../constants.js';
 
-export default class Frog extends Phaser.GameObjects.Rectangle {
-  constructor(scene, col, row) {
-    super(scene, col * 16 + 8, row * 16 + 8, 16, 16);
-    
+export default class Frog extends Phaser.GameObjects.Sprite {
+  constructor(scene, col, row, type = 'green') {
+    // Use sprite key from FROG_TYPES with centered origin
+    super(scene, col * TILE + TILE / 2, row * TILE + TILE / 2, FROG_TYPES[type].sprite);
+
     this.scene = scene;
     this.gridCol = col;
     this.gridRow = row;
-    this.state = 'SWIMMING'; // SWIMMING, ON_LOG, VULNERABLE
+    this.type = type; // 'green', 'blue', 'red', 'gold'
+    this.state = 'ON_BANK'; // ON_BANK, ON_LOG, SWIMMING
     this.decisionTimer = 0;
-    this.onLogId = null;
-    this.timeOnLog = 0;
-    
+    this.logOffset = 0;
+    this.currentLog = null;
+    this.swimOffset = 0; // For swimming animation
+
     // Set up graphics properties
-    this.setFillStyle(C.RED);
-    this.setOrigin(0);
-    
+    this.setOrigin(0.5);
+    this.setDisplaySize(TILE, TILE);
+    this.setDepth(2);
+
     // Add to scene
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    
+
     // Make sure it's not affected by physics gravity
     this.body.setAllowGravity(false);
+    this.body.setSize(TILE, TILE);
   }
-  
+
   update(delta, logs) {
     this.decisionTimer += delta;
-    
-    if (this.decisionTimer >= FROG_DECISION_INTERVAL) {
-      this.makeDecision(logs);
-      this.decisionTimer = 0;
-    }
-    
-    // Update time on log
+
+    // Handle state-specific behavior
     if (this.state === 'ON_LOG') {
-      this.timeOnLog += delta;
-    }
-  }
-  
-  makeDecision(logs) {
-    // Only move if not in vulnerable state
-    if (this.state === 'VULNERABLE') {
-      return;
-    }
-    
-    // 60% chance to jump, 40% chance to wait
-    if (Math.random() < FROG_JUMP_CHANCE) {
-      const possibleMoves = [];
-      
-      // Check possible moves: UP, DOWN, LEFT
-      if (this.gridRow > 1) possibleMoves.push({ dir: 'UP', col: this.gridCol, row: this.gridRow - 1 });
-      if (this.gridRow < 10) possibleMoves.push({ dir: 'DOWN', col: this.gridCol, row: this.gridRow + 1 });
-      if (this.gridCol > 1) possibleMoves.push({ dir: 'LEFT', col: this.gridCol - 1, row: this.gridRow });
-      
-      // If there are valid moves, make one
-      if (possibleMoves.length > 0) {
-        const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+      // Ride the log vertically
+      this.alpha = 1; // Reset alpha for ON_LOG state
+      if (this.currentLog) {
+        this.y = this.currentLog.y + this.logOffset;
         
-        // Update position
-        this.gridCol = move.col;
-        this.gridRow = move.row;
-        
-        // Check if we're on a log
-        let onLog = false;
-        for (const log of logs) {
-          if (log.gridCol === this.gridCol && 
-              log.y <= this.y && 
-              log.y + log.height >= this.y) {
-            this.state = 'ON_LOG';
-            this.onLogId = log.id;
-            onLog = true;
-            break;
-          }
-        }
-        
-        if (!onLog) {
+        // Check if log wrapped off screen
+        if (this.currentLog.y > CANVAS_HEIGHT || this.currentLog.y + this.currentLog.height < 0) {
+          // Log wrapped — sync gridCol/x before detaching so frog stays in the river
+          this.gridCol = Math.floor(this.x / TILE);
+          this.currentLog = null;
           this.state = 'SWIMMING';
         }
       }
+    } else if (this.state === 'SWIMMING') {
+      // Apply swimming visual effect (70% alpha)
+      this.alpha = 0.7;
+      
+      // Add swimming bobbing animation
+      this.swimOffset += delta * 0.01;
+      this.y += Math.sin(this.swimOffset) * 0.5;
+    } else {
+      // ON_BANK - normal appearance
+      this.alpha = 1;
+    }
+
+    // Make decision on interval (SWIMMING frogs move slower)
+    const decisionInterval = this.state === 'SWIMMING' 
+      ? FROG_DECISION_INTERVAL * 2 
+      : FROG_DECISION_INTERVAL;
+
+    if (this.decisionTimer >= decisionInterval) {
+      this.makeDecision(logs);
+      this.decisionTimer = 0;
     }
   }
-  
+
+  makeDecision(logs) {
+    switch (this.state) {
+      case 'ON_BANK':
+        this.decideOnBank(logs);
+        break;
+      case 'ON_LOG':
+        this.decideOnLog(logs);
+        break;
+      case 'SWIMMING':
+        this.decideSwimming(logs);
+        break;
+    }
+  }
+
+  decideOnBank(logs) {
+    // Check if a log in col 16 overlaps with this frog's row (centered origin)
+    const frogCenter = this.y;
+    const logOverlapY = (log) => 
+      log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
+    
+    for (const log of logs) {
+      if (log.gridCol === 16 && logOverlapY(log)) {
+        // Found a log to jump onto
+        this.state = 'ON_LOG';
+        this.currentLog = log;
+        this.logOffset = this.y - log.y;
+        return;
+      }
+    }
+    // No log found, stay on bank (do nothing)
+  }
+
+  decideOnLog(logs) {
+    if (Math.random() > 0.6) return; // just ride the log this tick
+    const frogCenter = this.y;
+    const landingZoneCol = this.gridCol - 1;
+    
+    // Check if a log is in the landing zone (col to left) - centered origin
+    const logOverlapY = (log) => 
+      log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
+    
+    let logFound = false;
+    for (const log of logs) {
+      if (log.gridCol === landingZoneCol && logOverlapY(log)) {
+        logFound = true;
+        break;
+      }
+    }
+    
+    // Use scene override if present, otherwise fall back to constant
+    const smartness = this.scene.frogSmartness !== undefined ? this.scene.frogSmartness : 0.75;
+    
+    // Smart jump (smartness) or dumb jump (1 - smartness)
+    if (logFound) {
+      // Log found in landing zone, jump onto it
+      for (const log of logs) {
+        if (log.gridCol === landingZoneCol && logOverlapY(log)) {
+          this.state = 'ON_LOG';
+          this.currentLog = log;
+          this.gridCol = landingZoneCol;
+          this.logOffset = this.y - log.y;
+          this.x = this.gridCol * TILE + TILE / 2;
+          return;
+        }
+      }
+    } else if (Math.random() < (1 - smartness)) {
+      // No log found but dumb jump - jump into water
+      this.state = 'SWIMMING';
+      this.gridCol = landingZoneCol;
+      this.x = this.gridCol * TILE + TILE / 2;
+      this.currentLog = null;
+    }
+    // If log not found and smart, just wait (do nothing)
+  }
+
+  decideSwimming(logs) {
+    // Move left (slowly - half speed)
+    if (Math.random() < 0.5) {
+      this.gridCol -= 1;
+      this.x = this.gridCol * TILE + TILE / 2;
+    }
+
+    // Check if we can jump onto a log (using centered origin)
+    const frogCenter = this.y;
+    const logOverlapY = (log) => 
+      log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
+    
+    for (const log of logs) {
+      if (log.gridCol === this.gridCol && logOverlapY(log)) {
+        // Jump onto the log
+        this.state = 'ON_LOG';
+        this.currentLog = log;
+        this.logOffset = this.y - log.y;
+        this.alpha = 1; // Reset alpha when jumping out of water
+        return;
+      }
+    }
+  }
+
   destroy() {
+    if (this.currentLog && this.state === 'ON_LOG') {
+      this.currentLog = null;
+    }
     super.destroy();
   }
 }
