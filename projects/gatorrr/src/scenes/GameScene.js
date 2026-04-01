@@ -395,8 +395,8 @@ export default class GameScene extends Phaser.Scene {
           // Update breath bar
       if (this.gator) {
         const breathPct = this.gator.breath / DIVE_BREATH_MAX;
-        this.hud.breathBar.setFill(breathePct > 0.3 ? 0x29ADFF : 0xFFA300);
-        this.hud.breathBar.setScale(breathePct, 1);
+        this.hud.breathBar.setFillStyle(breathPct > 0.3 ? 0x29ADFF : 0xFFA300);
+        this.hud.breathBar.setScale(breathPct, 1);
           }
         }
 
