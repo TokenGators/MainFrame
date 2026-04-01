@@ -3,8 +3,8 @@ import { FROG_DECISION_INTERVAL, TILE, FROG_TYPES, FROG_SMARTNESS, CANVAS_HEIGHT
 
 export default class Frog extends Phaser.GameObjects.Sprite {
   constructor(scene, col, row, type = 'green') {
-    // Use sprite key from FROG_TYPES
-    super(scene, col * TILE, row * TILE, FROG_TYPES[type].sprite);
+    // Use sprite key from FROG_TYPES with centered origin
+    super(scene, col * TILE + TILE / 2, row * TILE + TILE / 2, FROG_TYPES[type].sprite);
 
     this.scene = scene;
     this.gridCol = col;
@@ -104,6 +104,7 @@ export default class Frog extends Phaser.GameObjects.Sprite {
   }
 
   decideOnLog(logs) {
+    if (Math.random() > 0.6) return; // just ride the log this tick
     const frogCenter = this.y;
     const landingZoneCol = this.gridCol - 1;
     
@@ -147,8 +148,10 @@ export default class Frog extends Phaser.GameObjects.Sprite {
 
   decideSwimming(logs) {
     // Move left (slowly - half speed)
-    this.gridCol -= 1;
-    this.x = this.gridCol * TILE;
+    if (Math.random() < 0.5) {
+      this.gridCol -= 1;
+      this.x = this.gridCol * TILE;
+    }
 
     // Check if we can jump onto a log (using centered origin)
     const frogCenter = this.y;

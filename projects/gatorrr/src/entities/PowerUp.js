@@ -53,20 +53,21 @@ export default class PowerUp extends Phaser.GameObjects.Container {
   }
 
   collect(gator) {
-    // Restore HP, capped at MAX_HP
-    if (gator.hp < 3) {
-      gator.hp += 1;
-    }
-    // Visual feedback: flash the gator
-    this.scene.tweens.add({
-      targets: gator,
-      alpha: 0.5,
-      duration: 50,
-      yoyo: true,
-      onComplete: () => {
-        gator.alpha = 1;
-      }
-    });
-    this.destroy();
+  if (gator.hp < 3) {
+    gator.hp += 1;
   }
+  gator.setTint(0xFFFFFF);
+  this.scene.time.delayedCall(150, () => {
+    if (gator && gator.active) gator.clearTint();
+  });
+  this.scene.tweens.add({
+    targets: this,
+    scaleX: 1.4,
+    scaleY: 1.4,
+    alpha: 0,
+    duration: 150,
+    onComplete: () => { this.destroy(); }
+  });
+  if (this.timer) { this.timer.remove(); this.timer = null; }
+}
 }

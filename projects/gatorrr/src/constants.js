@@ -108,10 +108,10 @@ export const FROG_SMARTNESS = 0.75; // 0.0 = always jumps blindly, 1.0 = never j
 
 // Level System (D1)
 export const LEVEL_CONFIGS = [
-  { logsPerCol: 2, speedMin: 20, speedMax: 50,  spawnMin: 1500, spawnMax: 2250 }, // Level 1
-  { logsPerCol: 2, speedMin: 30, speedMax: 65,  spawnMin: 1250, spawnMax: 2000 }, // Level 2
-  { logsPerCol: 3, speedMin: 40, speedMax: 80,  spawnMin: 1000, spawnMax: 1750 }, // Level 3
-  { logsPerCol: 3, speedMin: 50, speedMax: 95,  spawnMin: 800,  spawnMax: 1500 }, // Level 4+ (max)
+  { logsPerCol: 1, speedMin: 20, speedMax: 45,  spawnMin: 1500, spawnMax: 2250 },
+  { logsPerCol: 1, speedMin: 30, speedMax: 60,  spawnMin: 1250, spawnMax: 2000 },
+  { logsPerCol: 2, speedMin: 40, speedMax: 75,  spawnMin: 1000, spawnMax: 1750 },
+  { logsPerCol: 2, speedMin: 55, speedMax: 90,  spawnMin: 800,  spawnMax: 1500 },
 ];
 
 // Dev Mode (E1)

@@ -85,26 +85,23 @@ export default class DevPanel {
     
     sliderIds.forEach(id => {
       const slider = document.getElementById(id);
-      const valueSpan = document.getElementById('val-' + id.split('-')[1]);
-      
+      const shortKey = id.replace('dev-', '');
+      const valueSpan = document.getElementById('val-' + shortKey);
+
       slider.addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
-        valueSpan.textContent = value.toFixed(id === 'dev-logspeed' || id === 'dev-smartness' ? 2 : 0);
-        
-        // Store value
-        const key = id.split('-')[1];
-        if (key === 'smartness') {
-          this.sliderValues.frogSmartness = value;
-        } else if (key === 'interval') {
-          this.sliderValues.frogDecisionInterval = value;
-        } else {
-          this.sliderValues[key] = value;
-        }
-        
-        // Apply immediately
+        const isDecimal = id === 'dev-logspeed' || id === 'dev-smartness';
+        valueSpan.textContent = value.toFixed(isDecimal ? 2 : 0);
+
+        if (id === 'dev-logs') this.sliderValues.logsPerCol = value;
+        else if (id === 'dev-logspeed') this.sliderValues.logSpeedMultiplier = value;
+        else if (id === 'dev-frogs') this.sliderValues.maxFrogs = value;
+        else if (id === 'dev-froginterval') this.sliderValues.frogDecisionInterval = value;
+        else if (id === 'dev-smartness') this.sliderValues.frogSmartness = value;
+
         this.applyValues();
       });
-    });
+     });
 
     // Close button handler
     document.getElementById('dev-close').addEventListener('click', () => {

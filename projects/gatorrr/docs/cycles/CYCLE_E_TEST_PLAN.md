@@ -1,155 +1,219 @@
 # GATORRR — Cycle E Test Plan
-**Cycle:** E — Dev Tuning Panel
+**Cycle:** E — Core Mechanics Overhaul (Entry, Dive, Bite)
 **Reference:** CYCLE_E_PRD.md
 **Audience:** QA Agent
-**Status:** Approved
-**Last updated:** 2026-03-25
+**Status:** Awaiting approval
+**Last updated:** 2026-03-30
 
 ---
 
 ## Instructions for QA
 
-Review source code and verify each test case. Mark PASS or FAIL with details on failures. Report all findings to Operator before any fixes proceed. Do NOT use git log or git diff — read source files directly.
-
-Files to read:
-- `src/ui/DevPanel.js`
-- `src/scenes/GameScene.js`
-- `src/managers/LogColumnManager.js`
-- `src/managers/FrogSpawner.js`
-- `src/entities/Frog.js`
-- `src/constants.js`
+Review source code and verify each test case. Mark PASS or FAIL. For failures, describe observed vs expected behavior and the responsible file/method. Report all findings to Operator before any fixes proceed.
 
 ---
 
-## Section 1 — Panel Visibility & Toggle
+## Section 1 — Gator Entry
 
 **TC-E-01**
-Given: `DEV_MODE = true` and game is in progress
-When: Player presses the backtick key (`)
-Then: Dev panel appears as an overlay in the top-right corner
-Expected: Panel visible, semi-transparent dark background, 5 sliders with labels
+Given: Game starts a new level
+When: Player observes the gator
+Then: Gator is on the bank (col 0), river is active with logs and frogs
+Expected: Gator positioned at col 0, not in the river
 
 **TC-E-02**
-Given: Dev panel is open
-When: Player presses backtick again
-Then: Panel closes and game resumes
-Expected: Panel hidden, Phaser scene unpaused
+Given: Gator is on the bank
+When: Player presses left, up, or down arrow
+Then: Gator does not move
+Expected: Bank-phase blocks all movement except rightward into the river
 
 **TC-E-03**
-Given: `DEV_MODE = false`
-When: Player presses backtick
-Then: Nothing happens
-Expected: No panel appears, game continues normally
+Given: Gator is on the bank
+When: Player presses right arrow
+Then: Gator enters the river (col 2), splash visual plays
+Expected: Entry triggers, splash effect visible, gator now in river
 
 **TC-E-04**
-Given: Dev panel is open
-When: Panel is open
-Then: Game is paused (logs not moving, frogs not moving)
-Expected: Phaser scene is paused while panel is visible
-
----
-
-## Section 2 — Slider Functionality
+Given: Gator has entered the river
+When: Player attempts to move left toward col 1 or col 0
+Then: Gator cannot move past col 2
+Expected: Movement blocked at river boundary — no bank or lily pad access
 
 **TC-E-05**
-Given: Dev panel is open
-When: Developer moves the "Logs/column" slider
-Then: The value display next to the slider updates in real time
-Expected: Live value feedback on all sliders as they are dragged
+Given: Gator is in the river
+When: Player attempts to move right past col 16
+Then: Gator cannot move past col 16
+Expected: Right boundary enforced
 
 **TC-E-06**
-Given: Dev panel is open, logs/column slider set to 4
-When: Panel is closed
-Then: River columns now have 4 logs each (more logs visible than before)
-Expected: Log count in each column reflects the slider value
-
-**TC-E-07**
-Given: Dev panel is open, log speed slider set to 2.0x
-When: Panel is closed
-Then: All logs move approximately twice as fast as before
-Expected: Noticeable speed increase on all logs
-
-**TC-E-08**
-Given: Dev panel is open, log speed slider set to 0.25x
-When: Panel is closed
-Then: Logs move very slowly
-Expected: Logs visibly slower — approximately quarter normal speed
-
-**TC-E-09**
-Given: Dev panel is open, max frogs slider set to 1
-When: Panel is closed and game runs for 30 seconds
-Then: Never more than 1 frog on screen at a time
-Expected: FrogSpawner respects the new maxFrogs value immediately
-
-**TC-E-10**
-Given: Dev panel is open, frog interval slider set to 200ms
-When: Panel is closed
-Then: Frogs make decisions (move) very rapidly
-Expected: Frogs move much more frequently than normal
-
-**TC-E-11**
-Given: Dev panel is open, frog interval slider set to 2000ms
-When: Panel is closed
-Then: Frogs move slowly and infrequently
-Expected: Noticeable slowdown in frog decision rate
-
-**TC-E-12**
-Given: Dev panel is open, frog smartness set to 0
-When: Panel is closed and frogs are observed crossing the river
-Then: Frogs jump regardless of whether a log is in the landing zone
-Expected: Most frogs fall into the water (dumb behavior)
-
-**TC-E-13**
-Given: Dev panel is open, frog smartness set to 1.0
-When: Panel is closed and frogs are observed crossing the river
-Then: Frogs only jump when a log is in the landing zone — never jump into open water
-Expected: No frogs fall into the water (fully smart behavior)
+Given: Level completes (win or lose)
+When: New level begins
+Then: Gator is back on the bank at col 0, entry state reset
+Expected: Full reset — gator on bank, must enter river again
 
 ---
 
-## Section 3 — Reset Behavior
+## Section 2 — Dive Mode
+
+**TC-E-07**
+Given: Gator is on the bank (not entered)
+When: Player holds Space
+Then: Nothing happens — dive does not activate
+Expected: Dive locked until gator enters river
+
+**TC-E-08**
+Given: Gator is in the river with full breath
+When: Player holds Space
+Then: Gator dives — logs and frogs fade to ~40% alpha, gator remains full color
+Expected: Visual dive state active, surface objects visually faded
+
+**TC-E-09**
+Given: Gator is diving
+When: A log moves into gator's tile
+Then: Gator takes no damage
+Expected: Log collision disabled while diving
+
+**TC-E-10**
+Given: Gator is diving
+When: A swimming frog moves into gator's tile
+Then: Gator does not eat the frog
+Expected: Frog collision disabled while diving
+
+**TC-E-11**
+Given: Gator is diving
+When: Player presses arrow keys
+Then: Gator moves normally (underwater navigation works)
+Expected: Movement unrestricted while diving
+
+**TC-E-12**
+Given: Gator is diving
+When: Player releases Space
+Then: Gator surfaces at current position, surface objects restore to full alpha
+Expected: Clean surface transition
+
+**TC-E-13**
+Given: Gator surfaces on a tile occupied by a swimming frog
+When: Surface collision resolves
+Then: Frog is eaten, gator is now exposed to logs
+Expected: Eat triggers on surface, gator is in danger from logs
 
 **TC-E-14**
-Given: Dev panel sliders have been adjusted (e.g., logs=4, speed=2x)
-When: Player dies and presses R to restart
-Then: Logs and frogs reset to level 1 defaults — slider overrides are gone
-Expected: Values return to level config defaults on restart
+Given: Gator surfaces on a tile occupied by a log
+When: Surface collision resolves
+Then: Gator takes damage
+Expected: Log damage triggers on surface
 
 **TC-E-15**
-Given: Dev panel sliders have been adjusted
-When: Player clears a level and advances to level 2
-Then: New level starts with level 2 config defaults, not the slider values
-Expected: Slider overrides do not persist across level transitions
+Given: Gator has been diving until breath runs out
+When: Breath meter reaches 0
+Then: Gator automatically surfaces at current position
+Expected: Forced surface, no crash, collision resolves at new position
+
+**TC-E-16**
+Given: Gator surfaces after a dive
+When: Player observes the breath meter
+Then: Breath meter begins refilling — not instant, takes several seconds
+Expected: Gradual regen, not instant refill
+
+**TC-E-17**
+Given: Gator has partial breath
+When: Player dives and surfaces repeatedly
+Then: Breath depletes faster than it refills at partial dive lengths
+Expected: Breath is a limited resource — spamming dive is punished
+
+**TC-E-18**
+Given: A new frog spawns while gator is diving
+When: Player observes the frog
+Then: New frog appears at faded alpha, consistent with other surface objects
+Expected: Dive alpha applies to frogs spawned mid-dive
+
+---
+
+## Section 3 — Bite Mode
+
+**TC-E-19**
+Given: Level starts
+When: Player observes the HUD
+Then: Bite counter shows 3
+Expected: BITE_START_COUNT = 3 displayed in HUD
+
+**TC-E-20**
+Given: Gator is in river with bites remaining
+When: Player holds Shift + presses right arrow
+Then: Bite fires to the right of gator's current position
+Expected: Target tile one step right is affected
+
+**TC-E-21**
+Given: A log is in the bite target tile
+When: Bite fires
+Then: Log segment disappears, bite count decrements by 1, score increases by 100
+Expected: Log removed, score += SCORE_LOG_BREAK
+
+**TC-E-22**
+Given: A swimming frog is in the bite target tile
+When: Bite fires
+Then: Frog is eaten (points by type), bite count decrements, no log bonus
+Expected: Frog removed, frog type points added, bite count -1
+
+**TC-E-23**
+Given: A frog on a log is in the bite target tile
+When: Bite fires
+Then: Frog eaten (points by type), log removed, bite count decrements, score = frog value + 100
+Expected: Both frog and log removed, combined score, bite count -1
+
+**TC-E-24**
+Given: Bite target tile is empty water
+When: Bite fires
+Then: Bite count decrements, nothing else happens
+Expected: Wasted bite — count -1, no score change, no crash
+
+**TC-E-25**
+Given: Bite count is 0
+When: Player holds Shift + presses direction
+Then: Nothing happens — no bite fires, count stays at 0
+Expected: Depleted bite state correctly locked
+
+**TC-E-26**
+Given: Gator is diving
+When: Player holds Shift + presses direction
+Then: Bite does not fire
+Expected: Bite locked during dive
+
+**TC-E-27**
+Given: A log is destroyed by bite
+When: New logs spawn in that column later
+Then: Spawning is unaffected — new logs appear normally
+Expected: Log destruction is local, not systemic
+
+**TC-E-28**
+Given: Level resets
+When: New level begins
+Then: Bite count resets to 3
+Expected: Bites restored per level
 
 ---
 
 ## Section 4 — Stability
 
-**TC-E-16**
-Given: Dev panel is open
-When: Panel is opened and closed rapidly multiple times
-Then: No crash, no duplicate panels, game resumes correctly each time
-Expected: Toggle is stable under rapid use
+**TC-E-29**
+Given: Player uses all three systems (entry, dive, bite) in a single session
+When: Full 60-second session completes
+Then: No crashes, no undefined references, all state transitions clean
+Expected: Stable session with all new mechanics active
 
-**TC-E-17**
-Given: Game ends (win or lose) while dev panel is open
-When: Transition to GameOverScene occurs
-Then: Panel is cleaned up — not visible on game over screen
-Expected: No panel leaking into GameOverScene or subsequent scenes
-
-**TC-E-18**
-Given: Logs/column slider is changed to a new value
-When: The reinitialize is triggered
-Then: No crash — old log objects are destroyed, new ones are created
-Expected: Clean reinitialize with no lingering log objects or physics bodies
+**TC-E-30**
+Given: Gator dives and bites are attempted in rapid succession
+When: Edge-case inputs are applied
+Then: No state corruption — gator correctly ignores bites while diving
+Expected: State guards work under rapid input
 
 ---
 
 ## Reporting
 
 QA report must include:
-- PASS or FAIL for every test case (TC-E-01 through TC-E-18)
-- For each FAIL: observed behavior, expected behavior, responsible file/method
+- PASS or FAIL for every test case (TC-E-01 through TC-E-30)
+- For each FAIL: observed behavior, expected behavior, file/method responsible
 - Any additional anomalies observed
 
-Post report to tracker channel, then fire system event.
+Send full report to Operator before any further development.
