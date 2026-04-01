@@ -140,10 +140,18 @@ export default class CollisionSystem {
   }
 
   checkGatorPowerUpCollision(gator, powerUp, gameState) {
-    if (!powerUp) return;
+  if (!powerUp || !powerUp.active) return;
 
-    if (this.checkRectangleCollision(gator, powerUp)) {
-      powerUp.collect(gator);
-    }
+  // Use physics body bounds for accurate collision (Container width is unreliable)
+  const gb = gator.body;
+  const pb = powerUp.body;
+  if (!gb || !pb) return;
+
+  if (gb.x < pb.x + pb.width &&
+      gb.x + gb.width > pb.x &&
+      gb.y < pb.y + pb.height &&
+      gb.y + pb.height > pb.y) {
+    powerUp.collect(gator);
   }
+}
 }

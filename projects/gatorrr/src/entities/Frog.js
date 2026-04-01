@@ -132,7 +132,7 @@ export default class Frog extends Phaser.GameObjects.Sprite {
           this.currentLog = log;
           this.gridCol = landingZoneCol;
           this.logOffset = this.y - log.y;
-          this.x = this.gridCol * TILE;
+          this.x = this.gridCol * TILE + TILE / 2;
           return;
         }
       }
@@ -140,7 +140,7 @@ export default class Frog extends Phaser.GameObjects.Sprite {
       // No log found but dumb jump - jump into water
       this.state = 'SWIMMING';
       this.gridCol = landingZoneCol;
-      this.x = this.gridCol * TILE;
+      this.x = this.gridCol * TILE + TILE / 2;
       this.currentLog = null;
     }
     // If log not found and smart, just wait (do nothing)
@@ -150,7 +150,7 @@ export default class Frog extends Phaser.GameObjects.Sprite {
     // Move left (slowly - half speed)
     if (Math.random() < 0.5) {
       this.gridCol -= 1;
-      this.x = this.gridCol * TILE;
+      this.x = this.gridCol * TILE + TILE / 2;
     }
 
     // Check if we can jump onto a log (using centered origin)

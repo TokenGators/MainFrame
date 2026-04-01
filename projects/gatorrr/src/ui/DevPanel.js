@@ -132,14 +132,14 @@ export default class DevPanel {
   }
 
   show() {
-    this.panel.style.display = 'block';
-    this.scene.scene.pause();
-  }
+  this.panel.style.display = 'block';
+  this.scene.devPanelOpen = true; // block input in GameScene
+}
 
   hide() {
-    this.panel.style.display = 'none';
-    this.scene.scene.resume();
-  }
+  this.panel.style.display = 'none';
+  this.scene.devPanelOpen = false;
+}
 
   toggle() {
     if (this.panel.style.display === 'block') {

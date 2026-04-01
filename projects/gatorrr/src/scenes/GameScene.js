@@ -50,6 +50,7 @@ export default class GameScene extends Phaser.Scene {
     this.powerUpTimer = null;
     this.sound = null;
     this.padFlash = null;
+    this.devPanelOpen = false;
   }
 
   create() {
@@ -209,9 +210,11 @@ export default class GameScene extends Phaser.Scene {
     if (this.gameState.gameOver) return;
 
     // Update gator (input + cooldowns)
-    if (this.gator && this.cursors) {
+    if (this.gator && this.cursors && !this.devPanelOpen) {
       this.gator.handleInput(this.cursors, delta);
       this.gator.update(delta);
+    } else if (this.gator) {
+      this.gator.update(delta); // still update cooldowns etc, just no input
     }
 
     if (this.frogSpawner) {
@@ -231,9 +234,14 @@ export default class GameScene extends Phaser.Scene {
         this.gameState,
         this.powerUp
       );
-    }
+        }
 
-    // Keep gator hp in sync
+        // Null powerUp reference after it's been collected/destroyed
+    if (this.powerUp && !this.powerUp.active) {
+      this.powerUp = null;
+        }
+
+        // Keep gator hp in sync
     this.gameState.hp = this.gator ? this.gator.hp : 0;
 
     // Update HUD
