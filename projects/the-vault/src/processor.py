@@ -1,159 +1,60 @@
 import os
+import re
 import json
 import httpx
+from urllib.parse import urlparse
 from typing import Dict, List, Optional
 from .models import VaultEntry, ProcessedEntry, FetchResult
 
 # Ollama API endpoint
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'qwen3.5:35b')
+MAX_CONTENT_CHARS = int(os.getenv('MAX_CONTENT_CHARS', '6000'))
 
-# Prompt templates
-SUMMARIZE_PROMPT = """
-You are an expert content summarizer. Please provide a concise, clear summary of the following text.
-The summary should capture the main points and key information.
+# Single combined prompt — one Ollama call, one JSON response
+COMBINED_PROMPT = """You are a research assistant cataloging articles for a team knowledge base.
 
-Text to summarize:
+Article title: {title}
+Content:
 {content}
 
-Summary (in 1-2 sentences):
-"""
+Respond in this exact JSON format (no other text, no markdown code blocks):
+{{"summary": "3-5 sentence summary of what this article is about and why it matters", "key_points": ["point 1", "point 2", "point 3", "point 4", "point 5"], "tags": ["tag1", "tag2", "tag3"], "category": "one of: AI | Dev | Crypto | Design | Business | Culture | General"}}"""
 
-KEY_POINTS_PROMPT = """
-You are an expert content analyzer. Please extract 3-5 key points from the following text.
-Format each point as a clear, concise bullet point.
-
-Text to analyze:
-{content}
-
-Key Points:
-"""
-
-TAGS_PROMPT = """
-You are an expert content categorizer. Based on the following text, please suggest 3-5 relevant tags.
-Tags should be lowercase and hyphenated (e.g., 'machine-learning', 'python-programming').
-
-Text to categorize:
-{content}
-
-Tags (comma-separated):
-"""
-
-CATEGORY_PROMPT = """
-You are an expert content classifier. Based on the following text, please classify it into one of these categories:
-Technology, Science, Business, Education, Arts, Sports, Health, Politics, Entertainment, Lifestyle, Other
-
-Text to classify:
-{content}
-
-Category:
-"""
-
-def process_content(fetch_result: FetchResult, timeout: int = 120) -> ProcessedEntry:
-    """
-    Process fetched content using Ollama AI.
-    
-    Args:
-        fetch_result (FetchResult): Result from fetching URL content
-        timeout (int): Request timeout in seconds
-        
-    Returns:
-        ProcessedEntry: AI-processed results including summary, key points, tags, and category
-    """
+def process_content(fetch_result: FetchResult, timeout: int = 300) -> ProcessedEntry:
+    """Process fetched content using a single Ollama AI call returning JSON."""
     if not fetch_result.success:
         raise Exception(f"Cannot process failed fetch result: {fetch_result.error}")
-    
-    # Create a combined text for processing (title + content)
-    combined_text = f"{fetch_result.title}\n\n{fetch_result.text}"
-    
-    # Get summary
-    summary = get_ai_summary(combined_text, timeout)
-    
-    # Get key points
-    key_points = get_ai_key_points(combined_text, timeout)
-    
-    # Get tags
-    tags = get_ai_tags(combined_text, timeout)
-    
-    # Get category
-    category = get_ai_category(combined_text, timeout)
-    
-    return ProcessedEntry(
-        summary=summary,
-        key_points=key_points,
-        tags=tags,
-        category=category
+
+    prompt = COMBINED_PROMPT.format(
+        title=fetch_result.title or 'Untitled',
+        content=fetch_result.text[:MAX_CONTENT_CHARS]
     )
 
-def get_ai_summary(content: str, timeout: int = 120) -> str:
-    """Get AI-generated summary of content."""
-    prompt = SUMMARIZE_PROMPT.format(content=content[:6000])  # Limit content size
-    
-    response = call_ollama(prompt, timeout)
-    return response.strip()
+    raw = call_ollama(prompt, timeout)
 
-def get_ai_key_points(content: str, timeout: int = 120) -> List[str]:
-    """Get AI-generated key points from content."""
-    prompt = KEY_POINTS_PROMPT.format(content=content[:6000])  # Limit content size
-    
-    response = call_ollama(prompt, timeout)
-    
-    # Parse the response into bullet points
-    lines = [line.strip() for line in response.split('\n') if line.strip()]
-    key_points = []
-    
-    for line in lines:
-        if line.startswith('- ') or line.startswith('* '):
-            key_points.append(line[2:].strip())
-        elif line and not line.startswith('#'):
-            key_points.append(line.strip())
-    
-    return key_points[:5]  # Limit to 5 points
+    # Parse JSON — strip markdown code fences if model wraps them
+    cleaned = raw.strip()
+    if cleaned.startswith('```'):
+        cleaned = re.sub(r'^```[a-z]*\n?', '', cleaned)
+        cleaned = re.sub(r'\n?```$', '', cleaned)
 
-def get_ai_tags(content: str, timeout: int = 120) -> List[str]:
-    """Get AI-generated tags for content."""
-    prompt = TAGS_PROMPT.format(content=content[:6000])  # Limit content size
-    
-    response = call_ollama(prompt, timeout)
-    
-    # Parse comma-separated tags
-    tags = [tag.strip().lower() for tag in response.split(',') if tag.strip()]
-    
-    # Convert to hyphenated format and limit to 5
-    formatted_tags = []
-    for tag in tags[:5]:
-        # Convert spaces and special characters to hyphens
-        formatted_tag = ''.join(c if c.isalnum() else '-' for c in tag.lower()).strip('-')
-        if formatted_tag:
-            formatted_tags.append(formatted_tag)
-    
-    return formatted_tags
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Fallback: extract JSON object with regex
+        m = re.search(r'\{.*\}', cleaned, re.DOTALL)
+        if m:
+            data = json.loads(m.group())
+        else:
+            data = {}
 
-def get_ai_category(content: str, timeout: int = 120) -> str:
-    """Get AI-generated category for content."""
-    prompt = CATEGORY_PROMPT.format(content=content[:6000])  # Limit content size
-    
-    response = call_ollama(prompt, timeout)
-    
-    # Normalize category name
-    category = response.strip().lower()
-    
-    # Map to standard categories
-    category_map = {
-        'technology': 'Technology',
-        'science': 'Science', 
-        'business': 'Business',
-        'education': 'Education',
-        'arts': 'Arts',
-        'sports': 'Sports',
-        'health': 'Health',
-        'politics': 'Politics',
-        'entertainment': 'Entertainment',
-        'lifestyle': 'Lifestyle',
-        'other': 'Other'
-    }
-    
-    return category_map.get(category, 'Other')
+    return ProcessedEntry(
+        summary=data.get('summary', 'No summary available.'),
+        key_points=data.get('key_points', []),
+        tags=data.get('tags', []),
+        category=data.get('category', 'General')
+    )
 
 def call_ollama(prompt: str, timeout: int = 120) -> str:
     """
@@ -171,14 +72,15 @@ def call_ollama(prompt: str, timeout: int = 120) -> str:
         payload = {
             "model": OLLAMA_MODEL,
             "prompt": prompt,
-            "stream": False
+            "stream": False,
+            "options": {"temperature": 0.3, "num_ctx": 8192}
         }
-        
+
         # Call Ollama API
         response = httpx.post(
             f"{OLLAMA_HOST}/api/generate",
             json=payload,
-            timeout=timeout
+            timeout=httpx.Timeout(timeout, connect=10.0)
         )
         
         if response.status_code != 200:
@@ -225,9 +127,11 @@ def process_entry(fetch_result: FetchResult, entry_id: str, url: str) -> VaultEn
         author=fetch_result.author,
         published=fetch_result.published,
         saved_at=now,
+        saved_by=None,
         word_count=fetch_result.word_count,
         read_time=estimate_read_time(fetch_result.word_count),
-        raw_content=fetch_result.text
+        raw_content=fetch_result.text,
+        discord_msg=None
     )
 
 def get_domain_from_url(url: str) -> str:

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { C } from '../constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC } from '../constants.js';
+import SoundManager from '../audio/SoundManager.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -7,53 +8,75 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   init(data) {
-    // Receive game result data (win/lose, reason, stats)
-    this.result = data.result || 'lose';
-    this.reason = data.reason || '';
-    this.stats = data.stats || {};
+    this.gameState = data?.gameState || {};
   }
 
   create() {
-    // Display outcome text using bitmap font
-    const centerX = this.cameras.main.width / 2;
-    const centerY = this.cameras.main.height / 2;
+    const centerX = CANVAS_WIDTH / 2;
+    const centerY = CANVAS_HEIGHT / 2;
+    const isWin = this.gameState.frogsEaten >= 10;
 
-    const text = this.add.text(centerX, centerY, 
-      this.result === 'win' ? 'YOU WIN!' : 'GAME OVER', 
-      { 
-        fontSize: '32px', 
-        color: this.result === 'win' ? '#FF004D' : '#1D2B53',
-        fontFamily: 'Courier New'
-      }
-    );
-    text.setOrigin(0.5);
+    // Background overlay (dimmed)
+    this.add.rectangle(centerX, centerY, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.7).setOrigin(0);
 
-    // Display stats
-    const statsText = this.add.text(centerX, centerY + 50, 
-      `Frogs Eaten: ${this.stats.frogsEaten}\nPads Filled: ${this.stats.padsFilled}`, 
-      { 
-        fontSize: '16px', 
-        color: '#FFF1E8',
-        fontFamily: 'Courier New'
-      }
-    );
-    statsText.setOrigin(0.5);
+    // Determine state and display appropriate message
+    const loseHP = this.gameState.hp <= 0;
+    const losePads = this.gameState.padsFilled >= 5;
 
-    // Listen for R key to restart
-    const restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
-    restartKey.on('down', () => {
-      this.scene.start('GameScene');
+    // Heading (win or game over)
+    const heading = isWin ? 'YOU WIN!' : 'GAME OVER';
+    this.add.text(centerX, centerY - 80, heading, {
+      fontSize: '32px',
+      fontWeight: 'bold',
+      fontStyle: 'bold',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+
+    // Subheading for loss states
+    if (!isWin) {
+      const subheading = loseHP ? 'The logs got you.' : 'The frogs won.';
+      this.add.text(centerX, centerY - 44, subheading, {
+        fontSize: '18px',
+        color: '#C2C3C7'
+      }).setOrigin(0.5);
+    }
+
+    // Score breakdown display
+    const style = { fontSize: '14px', color: '#ffffff' };
+
+    // Calculate components
+    const winBonus = isWin ? this.gameState.winBonus : 0;
+    const timeBonus = isWin ? this.gameState.timeBonus : 0;
+    const totalFrogPoints = this.gameState.score - winBonus - timeBonus - (this.gameState.padPenaltyTotal || 0);
+    const totalScore = this.gameState.score;
+
+    // Only show frog points if there were any (not just bonuses/penalties)
+    if (totalFrogPoints !== 0 || this.gameState.frogsEaten > 0) {
+      this.add.text(centerX, centerY - 12, `Frog points: +${totalFrogPoints}`, style).setOrigin(0.5);
+    }
+
+    if (this.gameState.padPenaltyTotal > 0) {
+      this.add.text(centerX, centerY + 4, `Pad penalties: -${this.gameState.padPenaltyTotal}`, { ...style, color: '#FF004D' }).setOrigin(0.5);
+    }
+
+    if (isWin) {
+      this.add.text(centerX, centerY + 20, `Win bonus: +${winBonus}`, { ...style, color: '#00E436' }).setOrigin(0.5);
+      this.add.text(centerX, centerY + 36, `Time bonus: +${timeBonus}`, { ...style, color: '#00E436' }).setOrigin(0.5);
+    }
+
+    // Total score
+    this.add.text(centerX, centerY + 60, `Total: ${totalScore}`, { ...style, color: '#FFA300', fontSize: '18px' }).setOrigin(0.5);
+
+    // Play game over sound
+    const sound = new SoundManager();
+    if (sound.ctx.state === 'suspended') {
+      sound.ctx.resume();
+    }
+    sound.play('gameOver');
+
+    // Transition to leaderboard after 2 seconds
+    this.time.delayedCall(2000, () => {
+      this.scene.start('LeaderboardScene', { score: totalScore, level: this.gameState.currentLevel || 1 });
     });
-
-    // Display restart instruction
-    const restartText = this.add.text(centerX, centerY + 120, 
-      'Press R to Restart', 
-      { 
-        fontSize: '16px', 
-        color: '#FFF1E8',
-        fontFamily: 'Courier New'
-      }
-    );
-    restartText.setOrigin(0.5);
   }
 }

@@ -7,17 +7,18 @@ export default class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Preload sprite assets (frog.png, gator.png, lily_pad.png from `assets/`)
     this.load.image('frog', 'assets/frog.png');
+    this.load.image('frog_blue', 'assets/frog_blue.png');
+    this.load.image('frog_red', 'assets/frog_red.png');
+    this.load.image('frog_gold', 'assets/frog_gold.png');
     this.load.image('gator', 'assets/gator.png');
-    this.load.image('lily_pad', 'assets/lily_pad.png');
-    
-    // Preload bitmap font if available; otherwise use Phaser's built-in bitmap text generation
-    // this.load.bitmapFont('font', 'assets/font.png', 'assets/font.xml');
+
+    this.load.on('complete', () => {
+      this.scene.start('TitleScene');
+    });
   }
 
   create() {
-    // On complete, start GameScene
-    this.scene.start('GameScene');
+    // Intentionally empty — transition handled in preload complete callback
   }
 }
