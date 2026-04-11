@@ -2,6 +2,10 @@
 # dev-qa-loop.sh - Handles the coder/QA retry cycle
 # Args: project task task_slug max_retries
 # Env:  SPEC_PATH (optional, from architect stage)
+#
+# No inline python3 -c allowed — use named scripts in helpers/
+# Required for tools.exec.strictInlineEval compliance
+
 
 set -uo pipefail
 # NOTE: set -e intentionally omitted — explicit exit code checks used throughout.
@@ -20,25 +24,7 @@ PR_URL=""
 
 # ── Helper: extract reply text from openclaw agent --json output ──────────────
 extract_agent_text() {
-  python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    result = d.get('result', {})
-    if isinstance(result, dict):
-        payloads = result.get('payloads', [])
-        if payloads and isinstance(payloads[0], dict) and payloads[0].get('text'):
-            print(payloads[0]['text'])
-            sys.exit(0)
-    for key in ('reply', 'text', 'message'):
-        if key in d and d[key]:
-            print(d[key])
-            sys.exit(0)
-    print(str(d))
-except Exception as e:
-    sys.stderr.write('extract_agent_text error: ' + str(e) + '\n')
-    print(sys.stdin.read())
-" 2>/dev/null
+  python3 "${SCRIPT_DIR}/helpers/extract-agent-text.py" < /dev/stdin 2>/dev/null
 }
 
 # ── Helper: find open PR for our branch, fallback to gh search ───────────────

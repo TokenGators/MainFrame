@@ -1,21 +1,39 @@
-import { FROG_SPAWN_MIN, FROG_SPAWN_MAX, MAX_FROGS_MIN, MAX_FROGS_MAX } from '../constants.js';
+import { FROG_SPAWN_WEIGHTS, FROG_TYPES, CANVAS_HEIGHT, TILE } from '../constants.js';
 import Frog from '../entities/Frog.js';
 
 export default class FrogSpawner {
-  constructor(scene) {
+  constructor(scene, levelConfig) {
     this.scene = scene;
     this.spawnTimer = 0;
     this.spawnInterval = 0;
     this.frogs = [];
     this.maxFrogs = 0;
+    this.levelConfig = levelConfig || {};
     
-    // Initialize spawn interval and max frogs
+    // Initialize spawn interval and max frogs from level config
     this.reset();
   }
   
   reset() {
-    this.spawnInterval = Math.random() * (FROG_SPAWN_MAX - FROG_SPAWN_MIN) + FROG_SPAWN_MIN;
-    this.maxFrogs = Math.floor(Math.random() * (MAX_FROGS_MAX - MAX_FROGS_MIN) + MAX_FROGS_MIN);
+    const spawnMin = this.levelConfig.spawnMin || 1500;
+    const spawnMax = this.levelConfig.spawnMax || 2250;
+    this.spawnInterval = Math.random() * (spawnMax - spawnMin) + spawnMin;
+    this.maxFrogs = this.levelConfig.maxFrogs || 6;
+  }
+  
+  // Weighted random selection for frog type
+  getRandomFrogType() {
+    const weights = Object.values(FROG_SPAWN_WEIGHTS);
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (const [type, weight] of Object.entries(FROG_SPAWN_WEIGHTS)) {
+      if (random < weight) {
+        return type;
+      }
+      random -= weight;
+    }
+    return 'green'; // fallback
   }
   
   update(delta) {
@@ -25,20 +43,31 @@ export default class FrogSpawner {
     if (this.frogs.length < this.maxFrogs && this.spawnTimer >= this.spawnInterval) {
       this.spawnFrog();
       this.spawnTimer = 0;
-      this.spawnInterval = Math.random() * (FROG_SPAWN_MAX - FROG_SPAWN_MIN) + FROG_SPAWN_MIN;
+      const spawnMin = this.levelConfig.spawnMin || 1500;
+      const spawnMax = this.levelConfig.spawnMax || 2250;
+      this.spawnInterval = Math.random() * (spawnMax - spawnMin) + spawnMin;
     }
     
     // Update existing frogs
     for (const frog of this.frogs) {
       frog.update(delta, this.scene.logManager ? this.scene.logManager.getAllLogs() : []);
     }
+    
+    // Remove frogs that are out of bounds
+    for (const frog of [...this.frogs]) {
+      if (frog.y < -TILE || frog.y > CANVAS_HEIGHT + TILE || frog.gridCol < 0) {
+        this.removeFrog(frog);
+      }
+    }
   }
   
   spawnFrog() {
-    // Spawn at col 17 (right bank), random row (1-10)
+    // Spawn at col 17-19 (right bank), random row (1-10)
     const row = Math.floor(Math.random() * 9) + 1; // 1 to 10
+    const col = Math.floor(Math.random() * 3) + 17; // 17, 18, or 19
+    const type = this.getRandomFrogType();
     
-    const frog = new Frog(this.scene, 17, row);
+    const frog = new Frog(this.scene, col, row, type);
     this.frogs.push(frog);
     
     return frog;

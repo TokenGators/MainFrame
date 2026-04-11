@@ -1,179 +1,541 @@
 import Phaser from 'phaser';
-import { C, GATOR_START, MAX_HP } from '../constants.js';
+import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE, LEVEL_CONFIGS, DEV_MODE, DIVE_SURFACE_ALPHA, DIVE_BREATH_MAX, BITE_START_COUNT, BITE_LOG_BONUS, SCORE_LOG_BREAK, GATOR_MIN_ROW, GATOR_MAX_ROW, RIVER_MIN_COL, RIVER_MAX_COL } from '../constants.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
 import CollisionSystem from '../managers/CollisionSystem.js';
 import LilyPad from '../entities/LilyPad.js';
+import PowerUp from '../entities/PowerUp.js';
+import DevPanel from '../ui/DevPanel.js';
+import SoundManager from '../audio/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
-  }
+    }
 
-  init() {
-    // Initialize game state
+  init(data) {
+      // Initialize level and score from passed data
+    const level = data?.level || 1;
+    this.currentLevel = level;
+    
+      // Get level config (use last config for levels beyond the defined range)
+    const configIndex = Math.min(level - 1, LEVEL_CONFIGS.length - 1);
+    this.levelConfig = LEVEL_CONFIGS[configIndex];
+    
     this.gameState = {
+      currentLevel: level,
       hp: MAX_HP,
       frogsEaten: 0,
       padsFilled: 0,
       gameOver: false,
       win: false,
-      timeLeft: 60000, // 60 seconds in milliseconds
-      score: 0
-    };
-    
+      timeLeft: 60000,
+      score: data?.score !== undefined ? data.score : 0,
+      winBonus: 0,
+      timeBonus: 0,
+      padPenaltyTotal: 0,
+      frogPointsTotal: 0
+      };
+
+    this.rampStep = 0;
     this.cursors = null;
     this.gator = null;
     this.frogSpawner = null;
     this.logManager = null;
     this.collisionSystem = null;
-    this.frogs = [];
-    this.logs = [];
     this.lilyPads = [];
     this.hud = null;
-  }
+    this.powerUp = null;
+    this.powerUpTimer = null;
+    this.sound = null;
+    this.padFlash = null;
+    this.devPanelOpen = false;
+    this.splash = null;
+    }
 
   create() {
-    // Set up input
     this.cursors = this.input.keyboard.createCursorKeys();
-    
-    // Create the gator at starting position
+
+      // Cycle E: Add Space and Shift keys
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.shiftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+
     this.gator = new Gator(this, GATOR_START.col, GATOR_START.row);
-    
-    // Create managers
-    this.frogSpawner = new FrogSpawner(this);
-    this.logManager = new LogColumnManager(this);
+
+      // Pass level config to managers
+    this.frogSpawner = new FrogSpawner(this, this.levelConfig);
+    this.logManager = new LogColumnManager(this, this.levelConfig);
     this.collisionSystem = new CollisionSystem(this);
-    
-    // Create lily pads at their starting positions
+
+    this.createBackground();
     this.createLilyPads();
-    
-    // Create HUD elements
     this.createHUD();
-    
-    // Set up game loop
+
+      // Initialize sound manager
+    this.sound = new SoundManager();
+
+      // Initialize pad flash overlay
+    this.padFlash = this.add.rectangle(
+      CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2,
+      CANVAS_WIDTH, CANVAS_HEIGHT,
+      0xFF004D, 0
+      ).setDepth(100).setOrigin(0.5);
+
+      // Resume audio context on first keypress
+    this.input.keyboard.once('keydown', () => {
+      if (this.sound.ctx.state === 'suspended') {
+        this.sound.ctx.resume();
+         }
+        });
+
+      // Countdown timer — fires every second
     this.time.addEvent({
       delay: 1000,
       callback: this.updateTimer,
       callbackScope: this,
       loop: true
-    });
-  }
+      });
+
+      // Start power-up spawn timer
+    this.startPowerUpTimer();
+    
+      // Initialize dev panel if in dev mode
+    if (DEV_MODE) {
+      this.devPanel = new DevPanel(this);
+        // Panel starts hidden — player opens it with backtick key
+      }
+    
+      // Keyboard listener for dev panel toggle
+    this.input.keyboard.on('keydown', (event) => {
+      if (event.key === '`' && DEV_MODE) {
+        this.devPanel?.toggle();
+         }
+        });
+    }
+
+  startPowerUpTimer() {
+    this.powerUpTimer = this.time.delayedCall(POWERUP_SPAWN_INTERVAL, () => {
+      this.spawnPowerUp();
+      });
+    }
+
+  spawnPowerUp() {
+      // Only spawn if no power-up exists
+    if (this.powerUp) return;
+
+      // Try up to 5 times to find a valid spawn position
+    const validCols = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; // cols 2-16
+    const validRows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // rows 1-10
+
+    let attempts = 0;
+    let spawned = false;
+
+    while (attempts < 5 && !spawned) {
+      const col = validCols[Math.floor(Math.random() * validCols.length)];
+      const row = validRows[Math.floor(Math.random() * validRows.length)];
+
+          // Check if this position is occupied by a log
+      const logs = this.logManager ? this.logManager.getAllLogs() : [];
+      let logOccupied = false;
+      for (const log of logs) {
+        if (log.gridCol === col) {
+              // Check vertical overlap
+          const logY = log.y;
+          const frogY = row * TILE;
+          if (logY <= frogY + TILE && logY + log.height >= frogY - TILE) {
+            logOccupied = true;
+            break;
+              }
+            }
+          }
+
+      if (!logOccupied) {
+          // Spawn the power-up
+        this.powerUp = new PowerUp(this, col, row);
+        spawned = true;
+          }
+
+      attempts++;
+      }
+
+      // Schedule next spawn
+    this.powerUpTimer = this.time.delayedCall(POWERUP_SPAWN_INTERVAL, () => {
+      this.spawnPowerUp();
+      });
+    }
+
+  createBackground() {
+      // Left bank (col 0): rectangle(0,0,TILE,CANVAS_HEIGHT, 0x008751) depth -1
+    this.add.rectangle(0, 0, TILE, CANVAS_HEIGHT, 0x008751).setOrigin(0).setDepth(-1);
+    
+      // Lily zone (col 1): rectangle(TILE,0,TILE,CANVAS_HEIGHT, 0x00A860) depth -1
+    this.add.rectangle(TILE, 0, TILE, CANVAS_HEIGHT, 0x00A860).setOrigin(0).setDepth(-1);
+    
+      // River (cols 2-16): rectangle(TILE*2,0,TILE*15,CANVAS_HEIGHT, 0x1D2B53) depth -1
+    this.add.rectangle(TILE*2, 0, TILE*15, CANVAS_HEIGHT, 0x1D2B53).setOrigin(0).setDepth(-1);
+    
+      // Right bank (cols 17-19): rectangle(TILE*17,0,TILE*3,CANVAS_HEIGHT, 0x008751) depth -1
+    this.add.rectangle(TILE*17, 0, TILE*3, CANVAS_HEIGHT, 0x008751).setOrigin(0).setDepth(-1);
+    
+      // HUD bar: rectangle(0,0,CANVAS_WIDTH,16, 0x000000) depth 9
+    this.add.rectangle(0, 0, CANVAS_WIDTH, 16, 0x000000).setOrigin(0).setDepth(9);
+    }
 
   createLilyPads() {
-    // Create lily pads at their starting positions
     for (const pos of this.getLilyPadPositions()) {
       const lilyPad = new LilyPad(this, pos.col, pos.row);
       this.lilyPads.push(lilyPad);
+      }
     }
-  }
 
   getLilyPadPositions() {
-    // Return the positions from constants
     return [
-      { col: 1, row: 2 },
-      { col: 1, row: 4 },
-      { col: 1, row: 5 },
-      { col: 1, row: 7 },
-      { col: 1, row: 9 },
-    ];
-  }
+        { col: 1, row: 2 },
+        { col: 1, row: 4 },
+        { col: 1, row: 5 },
+        { col: 1, row: 7 },
+        { col: 1, row: 9 },
+      ];
+    }
 
   createHUD() {
-    // Create basic HUD elements
+    const style = { fontSize: '8px', fill: '#ffffff', fontFamily: 'monospace' };
     this.hud = {
-      scoreText: this.add.text(10, 10, 'Score: 0', { fontSize: '16px', fill: '#fff' }),
-      timeText: this.add.text(10, 30, 'Time: 60', { fontSize: '16px', fill: '#fff' }),
-      hpText: this.add.text(10, 50, 'HP: 3', { fontSize: '16px', fill: '#fff' }),
-    };
-  }
+      levelText:  this.add.text(4,   2, 'LVL:1',     style).setDepth(10),
+      hpText:     this.add.text(50, 2, 'HP:',       style).setDepth(10),
+      scoreText:  this.add.text(100, 2, 'SCORE:0',  style).setDepth(10),
+      frogsText:  this.add.text(160, 2, 'FROGS:X/10', style).setDepth(10),
+      padsText:   this.add.text(230, 2, 'PADS:X/5',   style).setDepth(10),
+      timeText:   this.add.text(300, 2, 'T:XX',     style).setDepth(10),
+      biteText:   this.add.text(380, 2, 'BITES:3',  style).setDepth(10),
+      breathBar:  this.add.rectangle(40, 12, 30, 4, 0x29ADFF).setDepth(11).setOrigin(0, 0.5),
+      };
+    }
 
-  update(time, delta) {
-    // Update game state using delta time for frame-rate independence
-    if (this.gameState.gameOver) {
-      return;
-    }
+  playEntrySplash(x, y) {
+      // Create splash effect - white rectangle that scales up and fades
+    if (this.splash) this.splash.destroy();
     
-    // Handle gator input
-    if (this.gator && this.cursors) {
-      this.gator.handleInput(this.cursors);
-    }
+    this.splash = this.add.rectangle(x, y, 10, 10, 0xFFFFFF).setDepth(100).setOrigin(0.5);
     
-    // Update managers
-    if (this.frogSpawner) {
-      this.frogSpawner.update(delta);
+    this.tweens.add({
+      targets: this.splash,
+      scaleX: 3,
+      scaleY: 3,
+      alpha: 0,
+      duration: 300,
+      onComplete: () => {
+        if (this.splash) {
+          this.splash.destroy();
+          this.splash = null;
+          }
+        }
+      });
     }
+
+  setDiveVisuals(isDiving) {
+      // Set alpha for all logs and frogs
+    const logs = this.logManager ? this.logManager.getAllLogs() : [];
+    const frogs = this.frogSpawner ? this.frogSpawner.frogs : [];
     
-    if (this.logManager) {
-      this.logManager.update(delta);
+    for (const log of logs) {
+      log.alpha = isDiving ? DIVE_SURFACE_ALPHA : 1.0;
+      }
+    
+    for (const frog of frogs) {
+      frog.alpha = isDiving ? DIVE_SURFACE_ALPHA : 1.0;
+      }
     }
+
+  surfaceDive(gator) {
+      // Auto-surface: run collision check at current position
+    gator.isDiving = false;
+    gator.breath = DIVE_BREATH_MAX;
+    this.setDiveVisuals(false);
     
-    // Check collisions
+      // Check for log/frog collision at surface position
     if (this.collisionSystem && this.gator) {
       this.collisionSystem.checkAll(
         this.gator,
         this.frogSpawner ? this.frogSpawner.frogs : [],
         this.logManager ? this.logManager.getAllLogs() : [],
         this.lilyPads,
-        this.gameState
-      );
+        this.gameState,
+        this.powerUp
+        );
+      }
     }
-    
-    // Update HUD
+
+  update(time, delta) {
+    if (this.gameState.gameOver) return;
+
+      // Cycle E2: Handle dive toggle
+    if (this.spaceKey.isDown && this.gator && this.gator.entered) {
+      if (!this.gator.isDiving) {
+          // Start diving
+        this.gator.isDiving = true;
+        this.setDiveVisuals(true);
+          }
+        } else {
+          // Release space - surface if diving
+        if (this.gator && this.gator.isDiving) {
+          this.surfaceDive(this.gator);
+            }
+          }
+
+      // Cycle E3: Handle bite arm
+    if (this.shiftKey.isDown && this.gator) {
+      this.gator.biteArmed = true;
+        } else {
+      if (this.gator) {
+        this.gator.biteArmed = false;
+          }
+        }
+
+      // Cycle E3: Handle bite when direction pressed
+    if (this.gator && this.gator.biteArmed && this.gator.bites > 0 && !this.gator.isDiving) {
+      const { JustDown } = Phaser.Input.Keyboard;
+      let biteDir = null;
+      
+      if (JustDown(this.cursors.left)) biteDir = 'left';
+      else if (JustDown(this.cursors.right)) biteDir = 'right';
+      else if (JustDown(this.cursors.up)) biteDir = 'up';
+      else if (JustDown(this.cursors.down)) biteDir = 'down';
+      
+      if (biteDir) {
+          // Fire bite
+        const target = this.gator.bite(biteDir);
+        if (target) {
+            // Check for log at target
+          const logs = this.logManager ? this.logManager.getAllLogs() : [];
+          let hitLog = null;
+          for (const log of logs) {
+            if (log.gridCol === target.col && Math.abs(log.y - target.row * TILE) < TILE) {
+              hitLog = log;
+              break;
+              }
+            }
+          
+          if (hitLog) {
+              // Destroy log, add log break bonus
+            const index = logs.indexOf(hitLog);
+            if (index > -1) {
+              logs.splice(index, 1);
+              hitLog.destroy();
+              }
+            this.gameState.score += BITE_LOG_BONUS;
+              // Check for frog on log
+            const frogs = this.frogSpawner ? this.frogSpawner.frogs : [];
+            for (const frog of frogs) {
+              if (frog.gridCol === target.col && frog.gridRow === target.row) {
+                  // Eat frog on log
+                const frogIndex = frogs.indexOf(frog);
+                if (frogIndex > -1) {
+                  frogs.splice(frogIndex, 1);
+                  if (frog.active) frog.destroy();
+                    }
+                this.gameState.score += frog.type === 'green' ? 200 : frog.type === 'blue' ? 500 : frog.type === 'red' ? 1500 : 2000;
+                this.gameState.frogsEaten++;
+                  // Play eat sound
+                this.sound?.play?.('eat');
+                break;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+      // Update gator (input + cooldowns)
+    if (this.gator && this.cursors && !this.devPanelOpen) {
+      this.gator.handleInput(this.cursors, delta);
+      this.gator.update(delta);
+        } else if (this.gator) {
+      this.gator.update(delta); // still update cooldowns etc, just no input
+        }
+
+    if (this.frogSpawner) {
+      this.frogSpawner.update(delta);
+      }
+
+    if (this.logManager) {
+      this.logManager.update(delta);
+      }
+
+    if (this.collisionSystem && this.gator) {
+      this.collisionSystem.checkAll(
+        this.gator,
+        this.frogSpawner ? this.frogSpawner.frogs : [],
+        this.logManager ? this.logManager.getAllLogs() : [],
+        this.lilyPads,
+        this.gameState,
+        this.powerUp
+        );
+          }
+
+          // Null powerUp reference after it's been collected/destroyed
+    if (this.powerUp && !this.powerUp.active) {
+      this.powerUp = null;
+          }
+
+          // Keep gator hp in sync
+    this.gameState.hp = this.gator ? this.gator.hp : 0;
+
+      // Update HUD
     if (this.hud) {
-      this.hud.scoreText.setText('Score: ' + this.gameState.score);
-      this.hud.timeText.setText('Time: ' + Math.ceil(this.gameState.timeLeft / 1000));
-      this.hud.hpText.setText('HP: ' + this.gameState.hp);
-    }
-    
-    // Check win/lose conditions
-    if (this.gameState.win || this.gameState.hp <= 0) {
+      this.hud.levelText.setText(`LVL:${this.currentLevel}`);
+      this.hud.hpText.setText(`HP: ${this.gameState.hp}/${MAX_HP}`);
+      this.hud.scoreText.setText(`SCORE:${this.gameState.score}`);
+      this.hud.frogsText.setText(`Frogs: ${this.gameState.frogsEaten}/10`);
+      this.hud.padsText.setText(`Pads: ${this.gameState.padsFilled}/5`);
+      this.hud.timeText.setText(`Time: ${Math.ceil(this.gameState.timeLeft / 1000)}`);
+      this.hud.biteText.setText(`BITES:${this.gator ? this.gator.bites : 0}`);
+      
+          // Update breath bar
+      if (this.gator) {
+        const breathPct = this.gator.breath / DIVE_BREATH_MAX;
+        this.hud.breathBar.setFillStyle(breathPct > 0.3 ? 0x29ADFF : 0xFFA300);
+        this.hud.breathBar.setScale(breathPct, 1);
+          }
+        }
+
+      // Win / lose
+    if (this.gameState.win || this.gameState.hp <= 0 || this.gameState.gameOver) {
       this.gameState.gameOver = true;
       
-      // Show game over screen or restart
-      this.scene.start('GameOverScene');
+          // Calculate bonuses if won
+      if (this.gameState.win) {
+        this.gameState.winBonus = SCORE_WIN_BONUS;
+          // Time bonus: seconds remaining * 10 points per second
+        const timeSeconds = Math.floor(this.gameState.timeLeft / 1000);
+        this.gameState.timeBonus = timeSeconds * SCORE_TIME_BONUS_PER_SEC;
+        this.gameState.score += this.gameState.winBonus + this.gameState.timeBonus;
+          }
+      
+          // If win (10 frogs eaten), go to LevelClearScene
+      if (this.gameState.win) {
+        this.scene.start('LevelClearScene', { level: this.currentLevel, score: this.gameState.score });
+        return;
+          }
+      
+          // Save to leaderboard before transitioning
+      this.saveToLeaderboard();
+      
+      this.scene.start('GameOverScene', { gameState: this.gameState });
+      }
     }
-  }
+
+  saveToLeaderboard() {
+    try {
+      const leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
+      const newEntry = {
+        score: this.gameState.score,
+        level: this.gameState.currentLevel || 1,
+        date: new Date().toISOString()
+          };
+      
+      const combined = [...leaderboard, newEntry];
+      combined.sort((a, b) => b.score - a.score);
+      
+          // Trim to top 5
+      if (combined.length > 5) {
+        combined.length = 5;
+          }
+      
+      localStorage.setItem('gatorrr_leaderboard', JSON.stringify(combined));
+        } catch (e) {
+          // localStorage not available - silently skip
+          }
+        }
 
   updateTimer() {
     if (!this.gameState.gameOver) {
       this.gameState.timeLeft -= 1000;
-      
-      // Add time bonus to score
-      this.gameState.score += 1;
-      
-      // Check if time is up
+          // Score increases by 1 per second as time passes (time bonus tracking)
+      this.gameState.timeBonus += 1;
+
       if (this.gameState.timeLeft <= 0) {
         this.gameState.timeLeft = 0;
         this.gameState.gameOver = true;
-        this.scene.start('GameOverScene');
+        this.scene.start('GameOverScene', { gameState: this.gameState });
+          }
+        }
+    }
+
+  triggerPadFlash() {
+      // Screen edge red flash on pad fill
+    this.tweens.add({
+      targets: this.padFlash,
+      alpha: 0.4,
+      duration: 50,
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.padFlash,
+          alpha: 0,
+          duration: 250,
+          ease: 'Power2'
+            });
+          }
+        });
+    }
+
+  shutdown() {
+      // Clean up timers and listeners to prevent leaks on restart
+    this.time.removeAllEvents();
+    this.input.keyboard.removeAllListeners();
+    
+      // Clean up dev panel
+    if (this.devPanel) {
+      this.devPanel.destroy();
+      this.devPanel = null;
+        }
+    
+      // Clean up power-up timer
+    if (this.powerUpTimer) {
+      this.powerUpTimer.remove();
+      this.powerUpTimer = null;
+        }
+    
+      // Clean up active power-up
+    if (this.powerUp) {
+      this.powerUp.destroy();
+      this.powerUp = null;
+        }
       }
-    }
-  }
 
-  // Helper methods for entity management
-  addFrog(frog) {
-    if (this.frogSpawner && this.frogSpawner.frogs) {
-      this.frogSpawner.frogs.push(frog);
-    }
-  }
-
+      // Entity management helpers
   removeFrog(frog) {
     if (this.frogSpawner) {
       this.frogSpawner.removeFrog(frog);
-    }
-  }
+        }
+      }
 
   getFrogs() {
     return this.frogSpawner ? this.frogSpawner.frogs : [];
-  }
+    }
 
   getLogs() {
     return this.logManager ? this.logManager.getAllLogs() : [];
-  }
+    }
 
   getLilyPads() {
     return this.lilyPads;
-  }
+    }
+
+  applyDifficultyRamp() {
+    this.rampStep++;
+      // Speed up logs
+    if (this.logManager) {
+      for (const log of this.logManager.getAllLogs()) {
+        const sign = log.speed > 0 ? 1 : -1;
+        log.speed += sign * LOG_SPEED_RAMP;
+          }
+        }
+      // Speed up frog spawns
+    if (this.frogSpawner) {
+      this.frogSpawner.spawnInterval = Math.max(500, this.frogSpawner.spawnInterval - FROG_SPAWN_RAMP);
+        }
+      }
 }
