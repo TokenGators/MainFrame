@@ -373,9 +373,10 @@ def call_ollama(model_id: str, prompt: str, base_url: str) -> str:
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
+        "think": False,  # Disable thinking mode for qwen3/qwen3.5 — not needed for JSON extraction
         "options": {
             "temperature": 0.1,
-            "num_predict": 256,
+            "num_predict": 512,
         },
     }
     data = _http_post(url, payload, REQUEST_TIMEOUT)
@@ -424,6 +425,8 @@ def parse_tags_from_response(response: str, allowed_tags: set) -> tuple:
     - JSON embedded in markdown code fences
     - Malformed output with fallback regex extraction
     """
+    # Strip <think>...</think> blocks (qwen3/qwen3.5 thinking mode output)
+    response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
     # Strip markdown code fences if present
     response = re.sub(r"```(?:json)?\s*", "", response).strip()
 

@@ -1,5 +1,3 @@
-import type { Asset, PaginatedResponse, TaxonomyTag } from './types';
-
 const BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -8,7 +6,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
-  return res.json() as Promise<T>;
+  return res.json();
 }
 
 export interface AssetFilters {
@@ -22,9 +20,17 @@ export interface AssetFilters {
   per_page?: number;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
 export const api = {
   assets: {
-    list: (filters: AssetFilters = {}): Promise<PaginatedResponse<Asset>> => {
+    list: (filters: AssetFilters = {}) => {
       const params = new URLSearchParams();
       if (filters.type) params.set('type', filters.type);
       if (filters.tags?.length) params.set('tags', filters.tags.join(','));
@@ -34,23 +40,24 @@ export const api = {
       if (filters.sort) params.set('sort', filters.sort);
       if (filters.page) params.set('page', String(filters.page));
       if (filters.per_page) params.set('per_page', String(filters.per_page));
-      return request<PaginatedResponse<Asset>>(`/assets?${params}`);
+      return request<PaginatedResponse<any>>(`/assets?${params}`);
     },
-    get: (id: string): Promise<Asset> => request<Asset>(`/assets/${id}`),
-    patch: (id: string, fields: Record<string, unknown>): Promise<Asset> =>
-      request<Asset>(`/assets/${id}`, { method: 'PATCH', body: JSON.stringify(fields) }),
+    get: (id: string) => request<any>(`/assets/${id}`),
+    patch: (id: string, fields: Record<string, unknown>) =>
+      request<any>(`/assets/${id}`, { method: 'PATCH', body: JSON.stringify(fields) }),
   },
   nfts: {
-    list: (params: Record<string, string> = {}): Promise<PaginatedResponse<Asset>> => {
+    list: (params: Record<string, string> = {}) => {
       const qs = new URLSearchParams(params);
-      return request<PaginatedResponse<Asset>>(`/nfts?${qs}`);
+      return request<PaginatedResponse<any>>(`/nfts?${qs}`);
     },
-    get: (tokenId: number): Promise<Asset> => request<Asset>(`/nfts/${tokenId}`),
-    traits: (): Promise<Record<string, Record<string, number>>> =>
-      request<Record<string, Record<string, number>>>('/nfts/traits'),
+    get: (tokenId: number) => request<any>(`/nfts/${tokenId}`),
+    traits: () => request<Record<string, Record<string, number>>>('/nfts/traits'),
   },
   tags: {
-    list: (): Promise<TaxonomyTag[]> => request<TaxonomyTag[]>('/tags'),
+    list: () => request<{ tag: string; description: string; count: number }[]>('/tags'),
   },
-  status: (): Promise<Record<string, unknown>> => request<Record<string, unknown>>('/status'),
+  export: (body: Record<string, unknown>) =>
+    fetch(`${BASE}/export`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  status: () => request<any>('/status'),
 };

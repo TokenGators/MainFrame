@@ -1,0 +1,6 @@
+node_modules/
+videos/
+analysis/
+brand_lore_ready.json
+.env
+brand_lore_synthesis.md

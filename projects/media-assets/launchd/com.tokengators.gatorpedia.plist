@@ -2,29 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key>
-  <string>com.tokengators.gatorpedia</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/local/bin/node</string>
-    <string>src/server.js</string>
-  </array>
-  <key>WorkingDirectory</key>
-  <string>/Users/operator/repos/MainFrame/projects/media-assets</string>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>NODE_ENV</key>
-    <string>production</string>
-    <key>PORT</key>
-    <string>3001</string>
-  </dict>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>/Users/operator/Library/Logs/gatorpedia.log</string>
-  <key>StandardErrorPath</key>
-  <string>/Users/operator/Library/Logs/gatorpedia.error.log</string>
+   <key>Label</key>
+   <string>com.tokengators.gatorpedia</string>
+   <key>ProgramArguments</key>
+   <array>
+     <string>/usr/local/bin/node</string>
+     <string>src/server.js</string>
+   </array>
+   <key>WorkingDirectory</key>
+   <string>/Users/operator/repos/MainFrame/projects/media-assets</string>
+   <key>EnvironmentVariables</key>
+   <dict>
+     <key>NODE_ENV</key>
+     <string>production</string>
+     <key>PORT</key>
+     <string>3001</string>
+   </dict>
+   <key>RunAtLoad</key>
+   <true/>
+   <key>KeepAlive</key>
+   <true/>
+   <key>StandardOutPath</key>
+   <string>/Users/operator/Library/Logs/gatorpedia.log</string>
+   <key>StandardErrorPath</key>
+   <string>/Users/operator/Library/Logs/gatorpedia.error.log</string>
 </dict>
 </plist>
