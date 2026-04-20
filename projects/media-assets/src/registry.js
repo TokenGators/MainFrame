@@ -5,13 +5,17 @@ const readline = require('readline');
 const DB_DIR = path.join(__dirname, '../database');
 
 // Registry files to load. Order matters for write-back routing.
+// NOTE: assets.jsonl intentionally excluded — it contains raw tweet media
+// extractions (one record per tweet attachment). These are not standalone
+// browsable assets; they exist only for the match-nfts.py visual pipeline.
+// Matching results are propagated to the parent tweet and NFT records instead.
 const REGISTRY_FILES = [
   'posts-migrated.jsonl',
   'videos.jsonl',
   'nfts.jsonl',
   'memes.jsonl',
   'drive-manifest.jsonl',
-  'assets.jsonl',
+  'inbox.jsonl',        // auto-ingested assets
 ];
 
 // In-memory store
@@ -52,22 +56,43 @@ async function loadRegistry() {
 }
 
 function watchFiles() {
-  for (const filename of REGISTRY_FILES) {
-    const filePath = path.join(DB_DIR, filename);
-    if (!fs.existsSync(filePath)) continue;
-    fs.watch(filePath, { persistent: false }, (event) => {
-      if (event === 'change') {
-        console.log(`registry: reloading ${filename}`);
-        loadFile(filename);
-      }
-    });
-  }
+  // Watch the DB directory rather than individual files — this catches atomic
+  // renames (os.replace / rename) that the tagger uses for safe writes.
+  // A direct fs.watch on the file only tracks the original inode and misses
+  // the new file after a rename.
+  const debounce = {};
+  fs.watch(DB_DIR, { persistent: false }, (event, changedFile) => {
+    if (!changedFile) return;
+    const filename = REGISTRY_FILES.find(f => f === changedFile);
+    if (!filename) return;
+    // Debounce rapid successive events (rename fires twice on some OS)
+    clearTimeout(debounce[filename]);
+    debounce[filename] = setTimeout(() => {
+      console.log(`registry: reloading ${filename} (${event})`);
+      loadFile(filename);
+    }, 200);
+  });
 }
 
-function getAll({ type, tags, tagOp = 'and', q, flagged, sort = 'created_at', page = 1, perPage = 50 } = {}) {
+function getAll({ type, types, media_type, linked_count, tags, tagOp = 'and', q, flagged, hasLinked, sort = 'created_at', page = 1, perPage = 50 } = {}) {
   let results = Array.from(store.values());
 
   if (type) results = results.filter(r => r.type === type);
+  if (types && types.length) results = results.filter(r => types.includes(r.type));
+  if (media_type) {
+    const TWEET_TYPES = new Set(['post', 'retweet', 'quote-tweet']);
+    results = results.filter(r => {
+      if (!TWEET_TYPES.has(r.type)) return false;
+      const media = r.media || [];
+      if (media_type === 'none') return media.length === 0;
+      return media.some(m => m.type === media_type || (media_type === 'image' && m.type === 'photo'));
+    });
+  }
+
+  if (hasLinked) results = results.filter(r => Array.isArray(r.linked_assets) && r.linked_assets.length > 0);
+  if (linked_count === 'none')     results = results.filter(r => !r.linked_assets || r.linked_assets.length === 0);
+  if (linked_count === 'one')      results = results.filter(r => Array.isArray(r.linked_assets) && r.linked_assets.length === 1);
+  if (linked_count === 'multiple') results = results.filter(r => Array.isArray(r.linked_assets) && r.linked_assets.length > 1);
 
   if (tags && tags.length > 0) {
     results = results.filter(r => {
@@ -113,8 +138,11 @@ function getById(id) {
 
 // Write-back: update a record and persist to JSONL file
 const EDITABLE_FIELDS = new Set([
-  'tags', 'linked_assets', 'featured_gators', 'gator_appearances',
-  'alt_text', 'visual_summary', 'flagged_by', 'flagged_at', 'collections',
+  'tags', 'human_tags', 'linked_assets', 'external_links', 'featured_gators', 'gator_appearances',
+  'alt_text', 'visual_summary', 'text', 'name', 'flagged_by', 'flagged_at', 'collections',
+  // ingestion pipeline fields
+  'ingest_status', 'ingest_error', 'source_path', 'source_file', 'filename', 'url',
+  'platform_post_id', 'author_handle', 'descriptors',
 ]);
 
 function patch(id, fields) {
@@ -150,6 +178,41 @@ function writeFile(filename) {
   fs.renameSync(tmpPath, filePath);
 }
 
+/**
+ * Create a brand-new record and append it to the given file.
+ * Adds directly to the in-memory store so it's immediately queryable.
+ */
+function create(record, filename) {
+  if (!record.id) throw new Error('record.id is required');
+  store.set(record.id, record);
+  fileMap.set(record.id, filename);
+  // Write the full file atomically (same pattern as patch)
+  writeFile(filename);
+  return record;
+}
+
+/**
+ * Find the first record whose source_file field matches filename.
+ * Used for deduplication in the ingestion pipeline.
+ */
+function findBySourceFile(filename) {
+  for (const record of store.values()) {
+    if (record.source_file === filename) return record;
+  }
+  return null;
+}
+
+/**
+ * Find the first record whose source_url field matches url.
+ * Used for deduplication in the ingestion pipeline.
+ */
+function findBySourceUrl(url) {
+  for (const record of store.values()) {
+    if (record.source_url === url) return record;
+  }
+  return null;
+}
+
 function getStats() {
   const counts = {};
   for (const [id, filename] of fileMap.entries()) {
@@ -162,4 +225,4 @@ function getStats() {
   return { total: store.size, byFile: counts, byType };
 }
 
-module.exports = { loadRegistry, getAll, getById, patch, getStats };
+module.exports = { loadRegistry, getAll, getById, patch, create, findBySourceFile, findBySourceUrl, getStats };

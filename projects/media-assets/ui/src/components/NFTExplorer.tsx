@@ -1,232 +1,220 @@
 import { useState, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Search, Filter, Shuffle } from 'lucide-react';
-import { api } from '../lib/api';
+import { Search, ExternalLink } from 'lucide-react';
 import { useNFTs, useNFTTraits } from '../hooks/useNFTs';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { TYPE_COLORS } from '../lib/utils';
 
 const COLUMNS = 5;
-const ROW_HEIGHT = 220;
-const ITEM_PADDING = 16;
+const ROW_HEIGHT = 240;
+const ITEM_PADDING = 12;
+const CARD_WIDTH = 180;
 
 interface NFTExplorerProps {
   initialFilters?: Record<string, string>;
 }
+
+const sectionHeader = 'text-[10px] font-bold uppercase tracking-widest text-[#33ff33] mb-2';
 
 export function NFTExplorer({ initialFilters = {} }: NFTExplorerProps) {
   const { toast } = useToast();
   const [filterText, setFilterText] = useState('');
   const [traitFilters, setTraitFilters] = useState<Record<string, string>>(initialFilters);
   const [page, setPage] = useState(1);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const parentRef = useRef<HTMLDivElement>(null);
 
   const { data: nfts, isLoading, isFetching } = useNFTs(traitFilters, page);
   const { data: traits, isLoading: traitsLoading } = useNFTTraits();
 
-  // Reset to page 1 when trait filters change significantly
   const handleTraitChange = (trait: string, value: string | null) => {
     setTraitFilters((prev) => {
       const next = { ...prev };
-      if (value) {
-        next[trait] = value;
-      } else {
-        delete next[trait];
-      }
+      if (value) next[trait] = value;
+      else delete next[trait];
       return next;
     });
     setPage(1);
   };
 
-  // Virtual scroll setup
   const rowVirtualizer = useVirtualizer({
-    count: Math.ceil((nfts?.data?.length || 0) / COLUMNS) || 0,
+    count: Math.ceil((nfts?.data?.length || 0) / COLUMNS),
     getScrollElement: () => parentRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 3,
   });
 
-  // Filter traits by search
-  const filteredTraits = traits
-    ? Object.entries(traits).reduce((acc, [trait, values]) => {
-        if (trait.toLowerCase().includes(filterText.toLowerCase())) {
-          acc[trait] = values;
-        }
-        return acc;
-      }, {} as Record<string, Record<string, number>>)
-    : {};
+  const filteredTraitKeys = traits
+    ? Object.keys(traits).filter((t) =>
+        !filterText || t.toLowerCase().includes(filterText.toLowerCase())
+      )
+    : [];
 
-  // Clear all filters
   const clearFilters = () => {
     setTraitFilters({});
     setFilterText('');
     setPage(1);
   };
 
-  // Shuffle NFTs
-  const shuffle = async () => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch('/api/nfts/shuffle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(traitFilters),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error('Shuffle failed');
-      }
-
-      const result = await response.json();
-      toast({ description: `${result.shuffle || nfts?.data.length} NFTs shuffled` });
-    } catch {
-      toast({ variant: 'destructive', description: 'Failed to shuffle NFTs' });
-    }
-  };
-
-  // Virtualized rows
-  const rows = [];
-  for (let i = 0; i < rowVirtualizer.getVirtualItems().length; i++) {
-    const virtualRow = rowVirtualizer.getVirtualItems()[i];
-    const startIndex = virtualRow?.start || 0;
-    const endIndex = Math.min(startIndex + COLUMNS, (nfts?.data?.length || 0));
-
-    for (let idx = startIndex; idx < endIndex; idx++) {
-      const nft = nfts?.data?.[idx];
-      if (!nft) continue;
-
-      const row = Math.floor(idx / COLUMNS);
-      const col = idx % COLUMNS;
-
-      rows.push({
-        key: nft.token_id,
-        nft,
-        row,
-        col,
-        virtualIndex: virtualRow?.index || 0,
-        start: virtualRow?.start || 0,
-      });
-    }
-  }
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'gator-nft':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'gator-unique':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
-      default:
-        return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200';
-    }
-  };
+  const activeCount = Object.keys(traitFilters).length;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] bg-background">
+    <div className="flex h-[calc(100vh-45px)] bg-[#28272a]">
       {/* Traits sidebar */}
-      <aside className="w-64 shrink-0 border-r overflow-y-auto">
-        <div className="p-4 border-b space-y-4">
-          <h2 className="text-lg font-semibold">NFT Explorer</h2>
-          
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search traits..."
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-
-          {(Object.keys(traitFilters).length > 0 || filterText) && (
-            <Button variant="outline" size="sm" onClick={clearFilters} className="w-full">
-              Clear all
-            </Button>
+      <aside className="w-56 shrink-0 bg-[#1e1d20] border-r border-[#33ff33]/18 overflow-y-auto flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#33ff33]/18">
+          <span className="text-sm font-bold text-[#33ff33] uppercase tracking-widest">Traits</span>
+          {activeCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-[#33ff33]/60 hover:text-[#33ff33] transition-colors"
+            >
+              Clear ({activeCount})
+            </button>
           )}
         </div>
 
-        <div className="p-4 space-y-4">
+        {/* Search */}
+        <div className="px-3 py-2 border-b border-[#33ff33]/12">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-[#33ff33]/30" />
+            <input
+              placeholder="Filter traits..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className={[
+                'w-full text-xs pl-6 pr-2 py-1',
+                'bg-[#28272a] text-[#E0E0E0]',
+                'border border-[#33ff33]/20',
+                'placeholder-[#33ff33]/30',
+                'focus:outline-none focus:border-[#33ff33]/60',
+              ].join(' ')}
+            />
+          </div>
+        </div>
+
+        {/* Trait groups */}
+        <div className="flex-1 overflow-y-auto">
           {traitsLoading || !traits ? (
-            <div className="space-y-2">
-              <div className="h-4 bg-muted rounded" />
-              <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="px-4 py-3 space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-3 bg-[#33ff33]/8 rounded" />
+              ))}
             </div>
           ) : (
-            Object.entries(filteredTraits).map(([trait, values]) => (
-              <div key={trait} className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {trait}
-                </h3>
-                <div className="space-y-1">
-                  {Object.entries(values).map(([value, count]) => (
-                    <label
-                      key={value}
-                      className="flex items-center justify-between text-sm cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={traitFilters[trait] === value}
-                          onChange={(e) =>
-                            handleTraitChange(trait, e.target.checked ? value : null)
-                          }
-                          className="rounded border-gray-300"
-                        />
-                        <span>{value}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {count.toLocaleString()}
-                      </span>
-                    </label>
-                  ))}
+            filteredTraitKeys.map((trait) => {
+              const values = traits[trait] as Record<string, number>;
+              const activeVal = traitFilters[trait];
+              const isCollapsed = collapsed[trait];
+              const entries = Object.entries(values).sort((a, b) => b[1] - a[1]);
+
+              return (
+                <div key={trait} className="border-b border-[#33ff33]/10">
+                  {/* Trait group header */}
+                  <button
+                    onClick={() => setCollapsed((p) => ({ ...p, [trait]: !p[trait] }))}
+                    className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-[#33ff33]/5 transition-colors"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#33ff33]/80">
+                      {trait}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {activeVal && (
+                        <span className="text-[9px] text-[#33ff33] bg-[#33ff33]/10 px-1.5 py-0.5 border border-[#33ff33]/30">
+                          {activeVal}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-[#33ff33]/30">{isCollapsed ? '▸' : '▾'}</span>
+                    </div>
+                  </button>
+
+                  {/* Values */}
+                  {!isCollapsed && (
+                    <div className="pb-1">
+                      {entries.map(([value, count]) => {
+                        const active = activeVal === value;
+                        return (
+                          <label
+                            key={value}
+                            className={[
+                              'flex items-center justify-between px-4 py-0.5 cursor-pointer transition-colors',
+                              active
+                                ? 'text-[#33ff33] bg-[#33ff33]/10'
+                                : 'text-[#33ff33]/50 hover:text-[#33ff33] hover:bg-[#33ff33]/5',
+                            ].join(' ')}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={active}
+                                onChange={(e) => handleTraitChange(trait, e.target.checked ? value : null)}
+                                className="accent-[#33ff33] w-3 h-3"
+                              />
+                              <span className="text-xs">{value}</span>
+                            </div>
+                            <span className="text-[10px] text-[#33ff33]/30">{count.toLocaleString()}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </aside>
 
       {/* NFT grid */}
-      <main className="flex-1 overflow-hidden p-6">
-        {/* Header controls */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-sm text-muted-foreground">
-            {nfts?.total ? (
-              <>
-                Showing{' '}
-                {((page - 1) * 100 + 1).toLocaleString()}-
-                {Math.min(page * 100, nfts.total).toLocaleString()} of{' '}
-                {nfts.total.toLocaleString()} NFTs
-              </>
-            ) : (
-              'Loading NFTs...'
-            )}
-          </div>
-          
-          <Button variant="outline" size="sm" onClick={shuffle}>
-            <Shuffle className="h-4 w-4 mr-2" />
-            Shuffle
-          </Button>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#33ff33]/18 bg-[#1e1d20]">
+          <span className="text-xs text-[#33ff33]/60 font-mono">
+            {nfts?.total != null
+              ? `${nfts.total.toLocaleString()} NFTs`
+              : 'Loading...'}
+            {activeCount > 0 && ` · ${activeCount} trait filter${activeCount > 1 ? 's' : ''}`}
+          </span>
+          {/* Pagination */}
+          {nfts?.pages && nfts.pages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || isFetching}
+                className="px-2 py-0.5 text-xs text-[#33ff33]/60 border border-[#33ff33]/20 hover:border-[#33ff33]/50 hover:text-[#33ff33] disabled:opacity-30 transition-all"
+              >
+                ◀
+              </button>
+              <span className="text-xs text-[#33ff33]/50 font-mono px-2">
+                {page} / {nfts.pages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(nfts.pages, p + 1))}
+                disabled={page === nfts.pages || isFetching}
+                className="px-2 py-0.5 text-xs text-[#33ff33]/60 border border-[#33ff33]/20 hover:border-[#33ff33]/50 hover:text-[#33ff33] disabled:opacity-30 transition-all"
+              >
+                ▶
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* NFT container with virtual scroll */}
-        <div
-          ref={parentRef}
-          className="h-[calc(100vh-14rem)] overflow-y-auto"
-        >
-          {nfts?.data?.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12">
-              No NFTs found matching your filters.
+        {/* Virtual grid */}
+        <div ref={parentRef} className="flex-1 overflow-y-auto px-4 py-3">
+          {isLoading ? (
+            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${COLUMNS}, ${CARD_WIDTH}px)` }}>
+              {[...Array(20)].map((_, i) => (
+                <div key={i} className="h-[220px] bg-[#1e1d20] border border-[#33ff33]/10 animate-pulse" />
+              ))}
+            </div>
+          ) : nfts?.data?.length === 0 ? (
+            <div className="text-center text-[#33ff33]/40 py-12 font-mono text-sm">
+              No NFTs match your trait filters.
             </div>
           ) : (
             <div
-              className="min-h-[500px]"
               style={{
                 height: rowVirtualizer.getTotalSize(),
                 width: '100%',
@@ -234,130 +222,103 @@ export function NFTExplorer({ initialFilters = {} }: NFTExplorerProps) {
               }}
             >
               {isFetching && (
-                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10" />
+                <div className="absolute inset-0 bg-[#28272a]/50 z-10" />
               )}
-              
-              {rows.map(({ key, nft, row, col, start }) => (
-                <div
-                  key={key}
-                  className="absolute"
-                  style={{
-                    transform: `translateY(${start}px) translateX(${
-                      col * (200 + ITEM_PADDING)
-                    }px)`,
-                    width: 200,
-                  }}
-                >
-                  <Card className="p-2 hover:shadow-lg transition-shadow cursor-pointer bg-card">
-                    {/* NFT type badge */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${getTypeColor(
-                          nft.type || 'gator-nft'
-                        )}`}
-                      >
-                        {nft.type || 'Gator NFT'}
-                      </span>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        #{nft.token_id}
-                      </span>
-                    </div>
-
-                    {/* NFT image */}
-                    {nft.gateway_image_url ? (
-                      <img
-                        src={nft.gateway_image_url}
-                        alt={`${nft.name || 'Gator NFT'} #${nft.token_id}`}
-                        className="w-full h-28 object-cover rounded"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-28 bg-muted rounded flex items-center justify-center">
-                        <span className="text-2xl">🐊</span>
-                      </div>
-                    )}
-
-                    {/* NFT name */}
-                    <div className="mt-2">
-                      <p className="text-sm font-medium truncate">
-                        {nft.name || 'Gator #'}#{nft.token_id}
-                      </p>
-                    </div>
-
-                    {/* Traits preview */}
-                    {nft.trait_counts && Object.keys(nft.trait_counts).length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {Object.entries(nft.trait_counts)
-                          .slice(0, 3)
-                          .map(([trait, value]) => (
-                            <div key={`${trait}-${value}`} className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground truncate">{trait}:</span>
-                              <span className="font-medium truncate">{String(value)}</span>
-                            </div>
-                          ))}
-                        {Object.keys(nft.trait_counts).length > 3 && (
-                          <div className="text-xs text-muted-foreground">
-                            +{Object.keys(nft.trait_counts).length - 3} more
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Metadata */}
-                    <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between">
-                      <span>{nft.created_at ? new Date(nft.created_at).getFullYear() : '?'}</span>
-                      {nft.owner && <span>@{nft.owner}</span>}
-                    </div>
-                  </Card>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {nfts?.pages && nfts.pages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || isFetching}
-            >
-              Previous
-            </Button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, nfts.pages) }, (_, i) => {
-                const pageNum = nfts.pages <= 5 ? i + 1 : 
-                                i === 0 ? 1 :
-                                i === 4 ? nfts.pages :
-                                page - 2 + i;
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const rowStart = virtualRow.index * COLUMNS;
                 return (
-                  <Button
-                    key={pageNum}
-                    variant={page === pageNum ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPage(pageNum)}
-                    disabled={isFetching}
-                    className="min-w-[2.5rem]"
+                  <div
+                    key={virtualRow.index}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: ROW_HEIGHT,
+                      transform: `translateY(${virtualRow.start}px)`,
+                      display: 'flex',
+                      gap: ITEM_PADDING,
+                    }}
                   >
-                    {pageNum}
-                  </Button>
+                    {Array.from({ length: COLUMNS }, (_, col) => {
+                      const nft = nfts?.data?.[rowStart + col];
+                      if (!nft) return <div key={col} style={{ width: CARD_WIDTH }} />;
+                      return (
+                        <Link
+                          key={nft.token_id}
+                          to={`/nfts/${nft.token_id}`}
+                          style={{ width: CARD_WIDTH, flexShrink: 0 }}
+                          className="block bg-[#1e1d20] border border-[#33ff33]/15 hover:border-[#33ff33]/50 hover:bg-[#33ff33]/5 transition-all duration-300 p-2 cursor-pointer group"
+                        >
+                          {/* Token ID + link */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-mono text-[#33ff33]/60">
+                              #{nft.token_id}
+                            </span>
+                            {nft.source_url && (
+                              <a
+                                href={nft.source_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[#33ff33]/20 hover:text-[#33ff33]/70 transition-colors"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+
+                          {/* NFT Image */}
+                          {(nft.id || nft.gateway_image_url) ? (
+                            <img
+                              src={`/api/assets/${nft.id}/image`}
+                              alt={nft.name || `NFT #${nft.token_id}`}
+                              className="w-full object-cover border border-[#33ff33]/10"
+                              style={{ height: 140 }}
+                              loading="lazy"
+                              onError={(e) => {
+                                if (nft.gateway_image_url) (e.target as HTMLImageElement).src = nft.gateway_image_url;
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="w-full bg-[#28272a] border border-[#33ff33]/10 flex items-center justify-center text-2xl"
+                              style={{ height: 140 }}
+                            >
+                              🐊
+                            </div>
+                          )}
+
+                          {/* Name */}
+                          <p className="text-xs text-[#E0E0E0] truncate mt-1.5">
+                            {nft.name || `TokenGator #${nft.token_id}`}
+                          </p>
+
+                          {/* Top traits */}
+                          {nft.traits?.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {nft.traits.slice(0, 2).map((t: any) => (
+                                <div key={t.trait_type} className="flex justify-between text-[10px]">
+                                  <span className="text-[#33ff33]/40 truncate">{t.trait_type}</span>
+                                  <span className="text-[#E0E0E0]/70 truncate ml-1">{t.value}</span>
+                                </div>
+                              ))}
+                              {nft.traits.length > 2 && (
+                                <span className="text-[10px] text-[#33ff33]/30">
+                                  +{nft.traits.length - 2} traits
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(nfts.pages, p + 1))}
-              disabled={page === nfts.pages || isFetching}
-            >
-              Next
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );

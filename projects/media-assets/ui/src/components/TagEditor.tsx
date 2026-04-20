@@ -1,186 +1,176 @@
-import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, X, Plus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Plus } from 'lucide-react';
 import { useTaxonomyTags } from '../hooks/useTags';
 import { usePatchAsset } from '../hooks/useAssets';
-import { TAG_TIER_COLORS } from '../lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { AssetType } from '../lib/utils';
 
-// Tier membership lookup — built from taxonomy tags response
-function getTagClass(
-  tag: string,
-  isAI: boolean,
-  tierMap: Record<string, string>,
-  currentEditTags?: string[]
-) {
-  if (isAI) return TAG_TIER_COLORS.ai;
-  const tier = tierMap[tag];
-  if (tier) {
-    return TAG_TIER_COLORS[tier as keyof typeof TAG_TIER_COLORS];
-  }
-  return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300';
-}
+// Orange = AI-generated, Blue = human-added
+const AI_TAG_CLASS    = 'bg-orange-900/40 text-orange-300 border border-orange-700/50';
+const HUMAN_TAG_CLASS = 'bg-blue-900/40 text-blue-300 border border-blue-700/50';
 
 interface TagEditorProps {
   asset: any;
-  edits?: Record<string, any>;
-  setEdits?: (edits: Record<string, any>) => void;
 }
 
-export function TagEditor({ asset, edits, setEdits }: TagEditorProps) {
+export function TagEditor({ asset }: TagEditorProps) {
   const { data: taxonomyTags = [] } = useTaxonomyTags();
   const patchAsset = usePatchAsset();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [localTags, setLocalTags] = useState<string[]>(asset.tags || []);
 
-  // Update local state when edits change (for editor mode)
-  if (edits?.tags && setEdits && edits.tags !== localTags) {
-    setLocalTags(edits.tags);
-  }
+  // Local state — reset whenever asset changes
+  const [tags, setTags]           = useState<string[]>(asset?.tags || []);
+  const [humanTags, setHumanTags] = useState<string[]>(asset?.human_tags || []);
+  const [inputVal, setInputVal]   = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const isAITagged = asset.flagged_by === 'ai';
-  const tagSet = new Set(localTags);
+  useEffect(() => {
+    setTags(asset?.tags || []);
+    setHumanTags(asset?.human_tags || []);
+    setInputVal('');
+    setShowSuggestions(false);
+  }, [asset?.id]);
 
-  // Build tier map from taxonomy response
-  const tierMap: Record<string, string> = {};
-  taxonomyTags.forEach((t: any) => {
-    tierMap[t.tag] = t.tier || 'tier2';
-  });
+  const tagSet = new Set(tags);
 
-  const handleSaveTags = async () => {
+  const save = async (nextTags: string[], nextHumanTags: string[]) => {
+    setTags(nextTags);
+    setHumanTags(nextHumanTags);
     try {
       await patchAsset.mutateAsync({
         id: asset.id,
-        fields: { tags: localTags },
+        fields: { tags: nextTags, human_tags: nextHumanTags },
       });
-      setEdits?.({ ...edits, tags: localTags });
-      toast({ description: 'Tags saved successfully' });
     } catch {
-      toast({ description: 'Failed to save tags', variant: 'destructive' });
+      // Rollback on error
+      setTags(tags);
+      setHumanTags(humanTags);
+      toast({ variant: 'destructive', description: 'Failed to save tags' });
     }
-  };
-
-  const removeTag = (tag: string) => {
-    const newTags = localTags.filter((t) => t !== tag);
-    setLocalTags(newTags);
-    setEdits?.({ ...edits, tags: newTags });
   };
 
   const addTag = (tag: string) => {
-    if (!tagSet.has(tag)) {
-      const newTags = [...localTags, tag];
-      setLocalTags(newTags);
-      setEdits?.({ ...edits, tags: newTags });
-    }
-    setOpen(false);
+    tag = tag.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!tag || tagSet.has(tag)) { setInputVal(''); return; }
+    save([...tags, tag], [...humanTags, tag]);
+    setInputVal('');
+    setShowSuggestions(false);
   };
 
-  const approveAll = () => {
-    patchAsset.mutateAsync({
-      id: asset.id,
-      fields: { flagged_by: 'human', flagged_at: new Date().toISOString() },
-    });
-    toast({ description: 'Approved as human-reviewed' });
+  const removeTag = (tag: string) => {
+    save(
+      tags.filter(t => t !== tag),
+      humanTags.filter(t => t !== tag),
+    );
   };
 
-  const approveTag = (tag: string) => {
-    patchAsset.mutateAsync({
-      id: asset.id,
-      fields: { flagged_by: 'human', flagged_at: new Date().toISOString() },
-    });
-    toast({ description: `Approved tag "${tag}"` });
-  };
+  const humanTagSet = new Set(humanTags);
+  const isAI = (tag: string) => asset?.flagged_by === 'ai' && !humanTagSet.has(tag);
+
+  // Taxonomy suggestions filtered by input
+  const suggestions = taxonomyTags
+    .filter((t: any) => {
+      if (tagSet.has(t.tag)) return false;
+      if (!inputVal.trim()) return false;
+      return t.tag.toLowerCase().includes(inputVal.toLowerCase());
+    })
+    .slice(0, 8);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Tags</span>
-        {isAITagged && (
-          <Button size="sm" variant="outline" onClick={approveAll} className="text-xs h-7">
-            Approve all
-          </Button>
-        )}
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[#33ff33]">
+          Tags
+          {tags.length > 0 && (
+            <span className="ml-1.5 text-[#33ff33]/40 normal-case font-normal">
+              ({tags.length})
+            </span>
+          )}
+        </span>
+        <div className="flex items-center gap-2 text-[10px] text-[#33ff33]/30">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 bg-orange-500/60 border border-orange-500 inline-block" />
+            AI
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 bg-blue-500/60 border border-blue-500 inline-block" />
+            You
+          </span>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 min-h-[24px]">
-        {localTags.length === 0 ? (
-          <span className="text-xs text-muted-foreground py-1">No tags applied</span>
-        ) : (
-          localTags.map((tag) => (
-            <span
-              key={tag}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium ${getTagClass(
-                tag,
-                isAITagged,
-                tierMap,
-                localTags
-              )}`}
-            >
-              {tag}
-              {isAITagged && (
-                <button
-                  onClick={() => approveTag(tag)}
-                  className="hover:text-green-600 transition-colors"
-                  title="Approve AI tag"
-                >
-                  <Check className="h-3 w-3" />
-                </button>
-              )}
-              <button
-                onClick={() => removeTag(tag)}
-                className="hover:text-red-500 transition-colors"
-                title="Remove tag"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))
+      {/* Tag chips */}
+      <div className="flex flex-wrap gap-1.5 min-h-[22px]">
+        {tags.length === 0 && (
+          <span className="text-xs text-[#33ff33]/25 italic">No tags yet</span>
         )}
-
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold border ${
+              isAI(tag) ? AI_TAG_CLASS : HUMAN_TAG_CLASS
+            }`}
+          >
+            {tag}
             <button
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-dashed text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors"
+              onClick={() => removeTag(tag)}
+              className="hover:text-red-400 transition-colors ml-0.5"
+              title="Remove tag"
             >
-              <Plus className="h-3 w-3" /> Add tag
+              <X className="h-2.5 w-2.5" />
             </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-0" align="start">
-            <Command>
-              <CommandInput placeholder="Search tags..." />
-              <CommandList className="max-h-64">
-                {taxonomyTags.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">Loading taxonomy...</div>
-                ) : (
-                  taxonomyTags
-                    .filter((t: any) => !tagSet.has(t.tag))
-                    .map((t: any) => (
-                      <CommandItem
-                        key={t.tag}
-                        onSelect={() => addTag(t.tag)}
-                        className="cursor-pointer"
-                      >
-                        <span className="font-medium">{t.tag}</span>
-                        <span className="ml-2 text-muted-foreground text-xs truncate flex-1">
-                          {t.description}
-                        </span>
-                      </CommandItem>
-                    ))
-                )}
-                {taxonomyTags.filter((t: any) => !tagSet.has(t.tag)).length === 0 && (
-                  <div className="p-2 text-sm text-muted-foreground">
-                    No more tags to add
-                  </div>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+          </span>
+        ))}
+      </div>
+
+      {/* Add tag input */}
+      <div className="relative">
+        <div className="flex gap-1">
+          <div className="relative flex-1">
+            <input
+              ref={inputRef}
+              value={inputVal}
+              onChange={(e) => { setInputVal(e.target.value); setShowSuggestions(true); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); addTag(inputVal); }
+                if (e.key === 'Escape') { setInputVal(''); setShowSuggestions(false); }
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="Add tag... (type or pick from list)"
+              className={[
+                'w-full text-xs px-2 py-1',
+                'bg-[#28272a] text-[#E0E0E0]',
+                'border border-[#33ff33]/20 focus:border-[#33ff33]/60',
+                'placeholder-[#33ff33]/20 focus:outline-none',
+                'transition-colors duration-200',
+              ].join(' ')}
+            />
+          </div>
+          <button
+            onClick={() => addTag(inputVal)}
+            disabled={!inputVal.trim()}
+            className="px-2 py-1 text-[10px] font-bold text-[#33ff33]/60 border border-[#33ff33]/20 hover:text-[#33ff33] hover:border-[#33ff33]/50 hover:bg-[#33ff33]/5 disabled:opacity-30 transition-all duration-200"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+        </div>
+
+        {/* Suggestions dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-50 w-full mt-0.5 bg-[#1a191c] border border-[#33ff33]/30 max-h-48 overflow-y-auto">
+            {suggestions.map((t: any) => (
+              <button
+                key={t.tag}
+                onMouseDown={() => addTag(t.tag)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-[#33ff33]/8 transition-colors"
+              >
+                <span className="text-xs font-bold text-[#E0E0E0]">{t.tag}</span>
+                <span className="text-[10px] text-[#33ff33]/35 truncate flex-1">{t.description}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

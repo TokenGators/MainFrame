@@ -27,8 +27,14 @@ Usage:
     # Dry run — see what would be tagged
     python tag-assets.py --dry-run
 
-    # Tag all tweets
-    python tag-assets.py --input database/posts-migrated.jsonl --type tweet
+    # Tag all original posts
+    python tag-assets.py --input database/posts-migrated.jsonl --type post
+
+    # Tag retweets only
+    python tag-assets.py --input database/posts-migrated.jsonl --type retweet
+
+    # Tag all tweet sub-types (post + retweet + quote-tweet) — omit --type to catch all
+    python tag-assets.py --input database/posts-migrated.jsonl
 
     # Tag videos with 72B for better quality
     python tag-assets.py --input database/videos.jsonl --type video \\
@@ -61,8 +67,9 @@ import urllib.error
 # Model / provider config
 # ---------------------------------------------------------------------------
 
-# Default model — Qwen3.5 35B via Ollama
-DEFAULT_MODEL = "ollama/qwen3.5:35b"
+# Default model — Gemma4 31B via Ollama
+# Strong at semantic content understanding and rich description; no thinking-mode overhead.
+DEFAULT_MODEL = "ollama/gemma4:31b"
 
 # Provider endpoint map
 # Keys are provider prefixes used in --model flag (e.g. "ollama", "llamacpp")
@@ -203,7 +210,7 @@ def _embedded_taxonomy() -> dict:
 
 def taxonomy_to_prompt_block(taxonomy: dict) -> str:
     """Format taxonomy as a compact block for the system prompt."""
-    lines = ["ALLOWED TAGS (use ONLY these — no others):"]
+    lines = ["CONTROLLED TAGS — use ONLY tags from these lists for 'tags':"]
     lines.append("")
     lines.append("## Topic/Product Tags (Tier 2)")
     for tag, desc in taxonomy["tier2"].items():
@@ -213,9 +220,11 @@ def taxonomy_to_prompt_block(taxonomy: dict) -> str:
     for tag, desc in taxonomy["tier3"].items():
         lines.append(f"  {tag}: {desc}")
     lines.append("")
-    lines.append("## Tone Tags (Tier 4 — provisional, human review required)")
-    for tag, desc in taxonomy["tier4"].items():
-        lines.append(f"  {tag}: {desc}")
+    lines.append("OPEN DESCRIPTORS — for 'descriptors', generate freely (Giphy-style):")
+    lines.append("  Cover mood, tone, visual aesthetic, subjects, actions, themes, setting.")
+    lines.append("  Examples: celebratory, neon, alligator, swamp, crowd, hype, cinematic,")
+    lines.append("  surreal, parody, nighttime, pixel-art, running, triumphant, absurdist...")
+    lines.append("  Any number is fine. Do NOT repeat tags from the controlled lists above.")
     return "\n".join(lines)
 
 
@@ -246,36 +255,55 @@ TWEET TO TAG:
 {chr(10).join(context_parts)}
 
 INSTRUCTIONS:
-- Select 2-6 tags that best describe this tweet's content and tone
-- Only use tags from the ALLOWED TAGS list above — never invent new ones
-- Tier 1 format tags (tweet/video/image/etc.) are already set — do NOT include them
-- If a campaign/season tag clearly applies, include it
-- For tone tags, only apply if they clearly fit (1-2 max)
-- If the tweet is generic filler (GM/GN with no substance), use: community, marketing-noise
+- "tags": 2-6 controlled tags from the Topic/Product and Campaign/Season lists only — never invent
+- "descriptors": as many open descriptors as apply (mood, aesthetic, subjects, actions, themes, setting)
+- Tier 1 format tags (tweet/video/image/etc.) are already set — do NOT include them in either list
+- If a campaign/season tag clearly applies, include it in "tags"
+- If the tweet is generic filler (GM/GN with no substance), tags should include: community
 
 Respond with ONLY a JSON object in this exact format:
-{{"tags": ["tag1", "tag2", "tag3"], "reasoning": "brief explanation"}}"""
+{{"tags": ["tag1", "tag2"], "descriptors": ["mood1", "subject1", "theme1"], "reasoning": "brief explanation"}}"""
 
 
 def build_video_prompt(record: dict, taxonomy_block: str) -> str:
-    """Build a tagging prompt for a video record."""
-    summary = record.get("visual_summary") or record.get("metadata", {}).get("summary") or ""
+    """Build a tagging prompt for a video record using all available metadata."""
+    filename   = record.get("filename") or ""
+    summary    = record.get("visual_summary") or record.get("metadata", {}).get("summary") or ""
+    tone       = record.get("tone_and_energy") or ""
+    brand      = record.get("brand_signals") or {}
+    themes     = brand.get("themes") or []
+    values     = brand.get("values") or []
+    aesthetic  = record.get("aesthetic_notes") or {}
+    moments    = record.get("memorable_moments") or []
+    platform_tags = record.get("platform_tags") or []
+    featured   = record.get("featured_gators") or []
     transcript = record.get("transcript") or ""
-    tone = record.get("tone_and_energy") or ""
-    brand = record.get("brand_signals") or {}
-    themes = brand.get("themes") or []
-    filename = record.get("filename") or ""
 
     context_parts = [f"Filename: {filename}"]
     if summary:
         context_parts.append(f"Visual summary: {summary}")
     if tone:
-        context_parts.append(f"Tone/energy: {tone}")
+        context_parts.append(f"Tone & energy: {tone}")
     if themes:
         context_parts.append(f"Themes: {', '.join(themes)}")
+    if values:
+        context_parts.append(f"Brand values: {', '.join(values)}")
+    if aesthetic:
+        palette = aesthetic.get("color_palette") or aesthetic.get("style") or ""
+        mood    = aesthetic.get("mood") or aesthetic.get("atmosphere") or ""
+        if palette:
+            context_parts.append(f"Visual style/palette: {palette}")
+        if mood:
+            context_parts.append(f"Aesthetic mood: {mood}")
+    if moments:
+        moment_lines = [f"  [{m.get('timestamp','?')}] {m.get('description','')}" for m in moments[:5]]
+        context_parts.append("Key moments:\n" + "\n".join(moment_lines))
+    if platform_tags:
+        context_parts.append(f"Platform/subject tags: {', '.join(platform_tags)}")
+    if featured:
+        context_parts.append(f"Featured gators: {', '.join(featured)}")
     if transcript:
-        # Truncate long transcripts
-        t = transcript[:800] + ("..." if len(transcript) > 800 else "")
+        t = transcript[:800] + ("..." if len(str(transcript)) > 800 else "")
         context_parts.append(f"Transcript excerpt: {t}")
 
     return f"""You are tagging a TokenGators video asset. TokenGators is an NFT/Web3 brand
@@ -288,15 +316,15 @@ VIDEO TO TAG:
 {chr(10).join(context_parts)}
 
 INSTRUCTIONS:
-- Select 3-8 tags that best describe this video's content and tone
-- Only use tags from the ALLOWED TAGS list — never invent new ones
-- Tier 1 format tags (tweet/video/etc.) are already set — do NOT include them
-- For high-production cinematic content, include the "cinematic" tone tag
-- For campaign-specific content, include the relevant Tier 3 campaign tag
-- For tone tags (Tier 4), include 1-3 that clearly fit
+- "tags": 3-8 controlled tags from the Topic/Product and Campaign/Season lists only — never invent
+- "descriptors": as many open descriptors as apply — mood, aesthetic, subjects, actions, themes,
+  setting, visual style, production quality. Be generous — this is what makes videos searchable.
+- Tier 1 format tags (video/tweet/etc.) are already set — do NOT include them in either list
+- For campaign-specific content, include the relevant Tier 3 campaign tag in "tags"
+- If featured_gators lists specific NFTs, include "gator-character" and "nft-collection" in tags
 
 Respond with ONLY a JSON object in this exact format:
-{{"tags": ["tag1", "tag2", "tag3"], "reasoning": "brief explanation"}}"""
+{{"tags": ["tag1", "tag2", "tag3"], "descriptors": ["mood1", "subject1", "aesthetic1"], "reasoning": "brief explanation"}}"""
 
 
 def build_image_prompt(record: dict, taxonomy_block: str) -> str:
@@ -325,19 +353,23 @@ IMAGE/GIF TO TAG:
 {chr(10).join(context_parts)}
 
 INSTRUCTIONS:
-- Select 2-5 tags based on available context
-- Only use tags from the ALLOWED TAGS list — never invent new ones
-- If there is insufficient context to tag confidently, return just 1-2 broad tags
+- "tags": 1-4 controlled tags from the Topic/Product and Campaign/Season lists only — never invent
+- "descriptors": as many open descriptors as apply (mood, subjects, aesthetic, setting)
+- If there is insufficient context, return minimal tags and skip descriptors
 
 Respond with ONLY a JSON object in this exact format:
-{{"tags": ["tag1", "tag2"], "reasoning": "brief explanation"}}"""
+{{"tags": ["tag1", "tag2"], "descriptors": ["mood1", "subject1"], "reasoning": "brief explanation"}}"""
 
 
 PROMPT_BUILDERS = {
-    "tweet": build_tweet_prompt,
+    # Tweet sub-types (split from legacy "tweet" type)
+    "post":        build_tweet_prompt,
+    "retweet":     build_tweet_prompt,
+    "quote-tweet": build_tweet_prompt,
+    # Other asset types
     "video": build_video_prompt,
     "image": build_image_prompt,
-    "gif": build_image_prompt,
+    "gif":   build_image_prompt,
 }
 
 
@@ -417,11 +449,14 @@ def call_model(model_str: str, prompt: str) -> str:
 
 def parse_tags_from_response(response: str, allowed_tags: set) -> tuple:
     """
-    Extract tags list and reasoning from model response.
-    Returns (tags: list, reasoning: str).
+    Extract tags, descriptors, and reasoning from model response.
+    Returns (all_tags: list, reasoning: str).
+
+    - "tags"        → controlled vocabulary; filtered strictly against allowed_tags
+    - "descriptors" → open-ended Tier 4; passed through as-is (light sanitisation only)
 
     Handles:
-    - Clean JSON: {"tags": [...], "reasoning": "..."}
+    - Clean JSON: {"tags": [...], "descriptors": [...], "reasoning": "..."}
     - JSON embedded in markdown code fences
     - Malformed output with fallback regex extraction
     """
@@ -433,22 +468,33 @@ def parse_tags_from_response(response: str, allowed_tags: set) -> tuple:
     # Try JSON parse
     try:
         data = json.loads(response)
-        raw_tags = data.get("tags") or []
+        raw_controlled = data.get("tags") or []
+        raw_descriptors = data.get("descriptors") or []
         reasoning = data.get("reasoning") or ""
     except json.JSONDecodeError:
-        # Fallback: extract anything that looks like a tag list
-        tag_matches = re.findall(r'"([a-z][a-z0-9-]+)"', response)
-        raw_tags = tag_matches
+        # Fallback: pull everything from any list-like structure
+        raw_controlled = re.findall(r'"([a-z][a-z0-9-]+)"', response)
+        raw_descriptors = []
         reasoning = "(parse fallback)"
 
-    # Filter to only allowed tags — strict compliance
-    valid_tags = [t for t in raw_tags if t in allowed_tags]
-    invalid_tags = [t for t in raw_tags if t not in allowed_tags]
+    # Controlled tags: strict allow-list filtering
+    valid_controlled = [t for t in raw_controlled if t in allowed_tags]
+    invalid_controlled = [t for t in raw_controlled if t not in allowed_tags]
+    if invalid_controlled:
+        print(f"  ⚠ Filtered out non-taxonomy tags: {invalid_controlled}", file=sys.stderr)
 
-    if invalid_tags:
-        print(f"  ⚠ Filtered out non-taxonomy tags: {invalid_tags}", file=sys.stderr)
+    # Descriptors: light sanitisation only — lowercase, strip whitespace, drop empties/dupes
+    _seen = set(valid_controlled)
+    valid_descriptors = []
+    for d in raw_descriptors:
+        d = d.strip().lower()
+        # Drop if empty, too long, contains suspicious chars, or duplicates a controlled tag
+        if d and len(d) <= 50 and re.match(r'^[a-z0-9][a-z0-9 _-]*$', d) and d not in _seen:
+            valid_descriptors.append(d)
+            _seen.add(d)
 
-    return valid_tags, reasoning
+    all_tags = valid_controlled + valid_descriptors
+    return all_tags, reasoning
 
 
 # ---------------------------------------------------------------------------
@@ -528,7 +574,7 @@ def main():
     )
     parser.add_argument("--taxonomy", default=None, help="Path to TAXONOMY.md (default: auto-detected)")
     parser.add_argument("--type", dest="only_type", default=None,
-                        help="Only tag assets of this type (tweet/video/image/gif)")
+                        help="Only tag assets of this type (post/retweet/quote-tweet/video/image/gif)")
     parser.add_argument("--limit", type=int, default=None, help="Only process first N records (for testing)")
     parser.add_argument("--retag", action="store_true", help="Re-tag records that already have AI tags")
     parser.add_argument("--dry-run", action="store_true",
@@ -597,22 +643,83 @@ def main():
     errors = 0
     start_time = time.time()
 
+    # Track which IDs the tagger has actually processed this run
+    tagger_processed_ids: set = set()
+
     def flush_to_disk():
-        """Write all records (updated + original) to output file atomically."""
+        """Write all records to output file atomically, merging with current on-disk state.
+
+        Strategy:
+        - Re-read the current on-disk file as the authoritative base (preserves all
+          UI edits made concurrently — tag deletions, additions, etc.)
+        - For records the tagger has processed this run, overlay ONLY the tagger-owned
+          fields (tags, flagged_by, flagged_at, visual_summary, descriptors) on top of
+          the fresh disk version so UI edits to other fields are never lost.
+        - For records not yet processed, use the disk version as-is.
+        - Any record present in tagger memory but missing from disk is appended.
+        """
+        import os
+
+        # Re-read current on-disk state
+        disk_by_id: dict = {}
+        disk_order: list = []
+        if output_path.exists():
+            with open(output_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        rid = rec.get("id")
+                        disk_by_id[rid] = rec
+                        disk_order.append(rid)
+                    except json.JSONDecodeError:
+                        pass
+
+        # Fields the tagger owns — these get overwritten from tagger memory
+        TAGGER_FIELDS = {"tags", "flagged_by", "flagged_at", "visual_summary", "descriptors"}
+
+        # Build merged records preserving original order from our in-memory list
+        seen_ids: set = set()
+        merged: list = []
+        for rec in records:
+            rid = rec.get("id")
+            seen_ids.add(rid)
+
+            if rid in tagger_processed_ids:
+                # Start from fresh disk version (preserves UI edits to non-tagger fields)
+                base = dict(disk_by_id.get(rid, rec))
+                tagger_ver = records_by_id.get(rid, rec)
+                for field in TAGGER_FIELDS:
+                    if field in tagger_ver:
+                        base[field] = tagger_ver[field]
+                    elif field in base and field not in tagger_ver:
+                        pass  # keep disk value
+                merged.append(base)
+            else:
+                # Not yet processed — use disk version if available, else original
+                merged.append(disk_by_id.get(rid, rec))
+
+        # Append any records on disk that weren't in our original in-memory list
+        for rid in disk_order:
+            if rid not in seen_ids:
+                merged.append(disk_by_id[rid])
+
         tmp_path = str(output_path) + ".tmp"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(tmp_path, "w", encoding="utf-8") as f:
-            for rec in records:
-                current = records_by_id.get(rec.get("id"), rec)
-                f.write(json.dumps(current, ensure_ascii=False) + "\n")
-        import os
+            for rec in merged:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         os.replace(tmp_path, output_path)  # atomic rename
 
     for i, record in enumerate(to_process, 1):
         print(f"[{i}/{len(to_process)}] {record.get('id', '?')} ({record.get('type', '?')})")
         updated = tag_record(record, taxonomy, args.model, args.dry_run)
+        rid = record.get("id")
         if updated is not None:
-            records_by_id[record.get("id")] = updated
+            records_by_id[rid] = updated
+        tagger_processed_ids.add(rid)
         tagged += 1
 
         # Write to disk after every record so progress is never lost

@@ -105,12 +105,141 @@ export interface ArticleAsset extends BaseAsset {
 
 export type Asset = TweetAsset | VideoAsset | GatorNFT | ImageAsset | ArticleAsset | BaseAsset;
 
+export interface Holder {
+  wallet: string;
+  ens: string | null;
+  twitter: string | null;
+  twitter_display_name: string | null;
+  discord: string | null;
+  farcaster: string | null;
+  farcaster_display_name: string | null;
+  opensea: string | null;
+  name: string | null;
+  current_count: number;
+  eth_count: number;
+  ape_count: number;
+  minted_count: number;
+  total_ever_held: number;
+  total_sold: number;
+  still_holding: boolean;
+  first_acquired: string | null;
+  last_activity: string | null;
+  holding_since: string | null;
+  presale: boolean;
+  presale_quantity: number | null;
+  sources: Record<string, string>;
+  // cluster fields
+  cluster_id?: number | null;
+  wallet_count?: number;
+  all_wallets?: string[];
+  cluster_signal?: string | null;
+}
+
+export interface HolderStats {
+  total: number;
+  stillHolding: number;
+  minters: number;
+  presaleCount: number;
+  withEns: number;
+  totalTokens: number;
+  onEth: number;
+  onApe: number;
+  identified: number;
+  identifiedCurrent: number;
+  currentHoldersTotal: number;
+  uniquePersons: number;
+}
+
+export interface HolderFilters {
+  q?: string;
+  status?: 'all' | 'holding' | 'sold';
+  chain?: 'all' | 'eth' | 'ape' | 'both';
+  minter?: boolean;
+  sort?: 'current' | 'ever_held' | 'sold' | 'minted' | 'first_acquired' | 'holding_since' | 'last_activity';
+  order?: 'asc' | 'desc';
+  page?: number;
+  per_page?: number;
+  view?: 'wallets' | 'persons';
+  presale?: boolean;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;
   per_page: number;
   pages: number;
+}
+
+export interface ActivityEvent {
+  type: 'mint' | 'sale' | 'transfer' | 'bridge_out' | 'bridge_in';
+  token_id: number;
+  from: string;
+  to: string;
+  from_name: string;
+  to_name: string;
+  timestamp: string;
+  chain: 'eth' | 'ape';
+  tx_hash: string;
+  explorer_url: string;
+  marketplace?: string;
+  price_native?: number;
+  price_currency?: string;
+}
+
+export interface CollectorNft {
+  token_id: number;
+  name: string;
+  gateway_image_url?: string;
+  rarity_rank?: number | null;
+  traits?: Trait[];
+  chain?: 'eth' | 'ape' | null;
+}
+
+export interface CollectorProfile extends Holder {
+  identity: Record<string, unknown>;
+  sources: Record<string, string>;
+  cluster: { cluster_id: number; signal: string; peers: { wallet: string; current_count: number; ens: string | null }[] } | null;
+  nfts: {
+    current: CollectorNft[];
+    minted:  CollectorNft[];
+    sold:    CollectorNft[];
+  };
+  activity: {
+    total:  number;
+    recent: ActivityEvent[];
+  };
+  mentions: {
+    count:   number;
+    samples: { id: string; text: string; created_at: string; post_type?: string }[];
+  };
+}
+
+export interface NftHolderSummary {
+  wallet: string;
+  ens: string | null;
+  twitter: string | null;
+  twitter_display_name: string | null;
+  farcaster: string | null;
+  current_count: number;
+}
+
+export interface NftSalesSummary {
+  count: number;
+  eth_total: number;
+  ape_total: number;
+  highest_eth: number;
+  highest_ape: number;
+}
+
+export interface NftProfile extends GatorNFT {
+  appearances: any[];
+  current_owner: NftHolderSummary | null;
+  current_chain: 'eth' | 'ape' | null;
+  minter: NftHolderSummary | null;
+  past_owners: NftHolderSummary[];
+  history: ActivityEvent[];
+  sales_summary: NftSalesSummary;
 }
 
 export interface TaxonomyTag {

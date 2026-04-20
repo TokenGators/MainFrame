@@ -5,21 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export type AssetType = 'tweet' | 'video' | 'gator-nft' | 'image' | 'gif' | 'article' | 'audio';
+export type AssetType = 'post' | 'retweet' | 'quote-tweet' | 'video' | 'nft' | 'image' | 'gif' | 'article' | 'audio';
 
-export const TYPE_COLORS: Record<AssetType, string> = {
-  tweet: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  video: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
-  'gator-nft': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  image: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
-  gif: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  article: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-  audio: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
+// Type chips — colored text on the brand dark bg (#1e1d20 card surface)
+export const TYPE_COLORS: Record<string, string> = {
+  post:          'bg-blue-900/40   text-blue-300    border border-blue-700/50',
+  retweet:       'bg-sky-900/40    text-sky-300     border border-sky-700/50',
+  'quote-tweet': 'bg-indigo-900/40 text-indigo-300  border border-indigo-700/50',
+  video:         'bg-violet-900/40 text-violet-300   border border-violet-700/50',
+  nft:           'bg-[#33ff33]/10  text-[#33ff33]   border border-[#33ff33]/30',
+  image:         'bg-slate-800/60  text-slate-300    border border-slate-600/50',
+  gif:           'bg-pink-900/40   text-pink-300     border border-pink-700/50',
+  article:       'bg-amber-900/40  text-amber-300    border border-amber-700/50',
+  audio:         'bg-cyan-900/40   text-cyan-300     border border-cyan-700/50',
 };
 
+// Tag tier pills — PRD spec: tier2=blue, tier3=orange, tier4=purple, ai=amber dashed
 export const TAG_TIER_COLORS = {
-  tier2: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300',
-  tier3: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300',
-  tier4: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300',
-  ai: 'bg-amber-50 text-amber-700 border-amber-300 border-dashed dark:bg-amber-950 dark:text-amber-300',
+  tier2: 'bg-blue-900/30  text-blue-300   border border-blue-700/40',
+  tier3: 'bg-amber-900/30 text-amber-300  border border-amber-700/40',
+  tier4: 'bg-purple-900/30 text-purple-300 border border-purple-700/40',
+  ai:    'bg-amber-900/20 text-amber-400  border border-amber-500/50 border-dashed',
 };

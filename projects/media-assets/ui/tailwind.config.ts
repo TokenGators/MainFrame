@@ -15,16 +15,16 @@ export default {
         foreground: 'var(--foreground)',
         background: 'var(--background)',
         primary: {
-          DEFAULT: 'var(--primary)',
-          foreground: '...',
+          DEFAULT: '#33ff33',
+          foreground: '#28272a',
         },
         secondary: {
-          DEFAULT: 'var(--secondary)',
-          foreground: '...',
+          DEFAULT: '#28272a',
+          foreground: '#E0E0E0',
         },
         destructive: {
-          DEFAULT: 'var(--destructive)',
-          foreground: '...',
+          DEFAULT: '#FF494A',
+          foreground: '#fff',
         },
         muted: {
           DEFAULT: 'var(--muted)',
@@ -32,7 +32,7 @@ export default {
         },
         accent: {
           DEFAULT: 'var(--accent)',
-          foreground: '...',
+          foreground: 'var(--accent-foreground)',
         },
         popover: {
           DEFAULT: 'var(--popover)',
@@ -43,10 +43,17 @@ export default {
           foreground: 'var(--card-foreground)',
         },
       },
+      fontFamily: {
+        // WumpusMono — place font file at ui/public/fonts/WumpusMono.woff2
+        WumpusMono: ['WumpusMono', 'Courier New', 'ui-monospace', 'monospace'],
+        sans: ['WumpusMono', 'Courier New', 'ui-monospace', 'monospace'],
+        mono: ['WumpusMono', 'Courier New', 'ui-monospace', 'monospace'],
+      },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(anim-radius - 4px)',
+        // Brand uses minimal radius — square/sharp aesthetic
+        lg: '0.25rem',
+        md: '0.125rem',
+        sm: '0px',
       },
     },
   },

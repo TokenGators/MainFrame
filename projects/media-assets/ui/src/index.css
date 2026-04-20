@@ -1,89 +1,102 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+  WumpusMono — TokenGators brand font
+  Place the font file at: ui/public/fonts/WumpusMono.woff2
+  (copy from the live site: /_next/static/media/27834908180db20f-s.p.woff2)
+  Falls back to Courier New / system monospace if not present.
+*/
+@font-face {
+  font-family: 'WumpusMono';
+  src: url('/fonts/WumpusMono.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif
-  }
-  :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0)
-  }
+  /*
+    TokenGators brand — always dark.
+    #28272a background, #33ff33 terminal-green accent, #E0E0E0 body text.
+    Dark class is set on <html> in index.html so this is always active.
+  */
+  :root,
   .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0)
+    --background: #28272a;
+    --foreground: #E0E0E0;
+
+    --card: #1e1d20;
+    --card-foreground: #E0E0E0;
+
+    --popover: #1a191c;
+    --popover-foreground: #E0E0E0;
+
+    /* Primary = #33ff33 terminal green */
+    --primary: #33ff33;
+    --primary-foreground: #28272a;
+
+    /* Secondary = slightly lighter panel surface */
+    --secondary: #323135;
+    --secondary-foreground: #E0E0E0;
+
+    --muted: #2e2d30;
+    --muted-foreground: rgba(51, 255, 51, 0.6);
+
+    /* Accent = green tint used for active states */
+    --accent: rgba(51, 255, 51, 0.08);
+    --accent-foreground: #33ff33;
+
+    --destructive: #FF494A;
+    --destructive-foreground: #fff;
+
+    /* Borders use green at 20% opacity — subtle but on-brand */
+    --border: rgba(51, 255, 51, 0.18);
+    --input: rgba(51, 255, 51, 0.12);
+    --ring: rgba(51, 255, 51, 0.45);
+
+    /* Minimal radius — brand uses sharp/square aesthetic */
+    --radius: 0.25rem;
+
+    /* Sidebar tokens */
+    --sidebar: #1e1d20;
+    --sidebar-foreground: #E0E0E0;
+    --sidebar-primary: #33ff33;
+    --sidebar-primary-foreground: #28272a;
+    --sidebar-accent: rgba(51, 255, 51, 0.08);
+    --sidebar-accent-foreground: #33ff33;
+    --sidebar-border: rgba(51, 255, 51, 0.18);
+    --sidebar-ring: rgba(51, 255, 51, 0.45);
   }
+
   * {
     @apply border-border;
   }
+
+  html {
+    font-family: 'WumpusMono', 'Courier New', ui-monospace, monospace;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
+
+  /* Scrollbar — on-brand dark + green */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1e1d20;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(51, 255, 51, 0.25);
+    border-radius: 0;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(51, 255, 51, 0.45);
   }
 }

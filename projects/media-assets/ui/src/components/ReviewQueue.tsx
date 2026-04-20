@@ -248,117 +248,98 @@ export function ReviewQueue({ initialFlagged = 'ai' }: ReviewQueueProps) {
 
   const emptyState = assets.length === 0;
 
+  const btnBase = 'px-3 py-1.5 text-xs font-bold border transition-all duration-200 flex items-center gap-1.5';
+  const btnGreen  = `${btnBase} text-[#28272a] bg-[#33ff33] border-[#33ff33] hover:bg-[#33ff33]/90 disabled:opacity-30 disabled:cursor-not-allowed`;
+  const btnOutline = `${btnBase} text-[#33ff33]/70 border-[#33ff33]/30 hover:text-[#33ff33] hover:border-[#33ff33]/60 hover:bg-[#33ff33]/5 disabled:opacity-30 disabled:cursor-not-allowed`;
+  const btnRed    = `${btnBase} text-white bg-red-700 border-red-700 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed`;
+
   return (
-    <div className="h-[calc(100vh-3.5rem)] bg-background flex">
-      {/* Main list view */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-amber-500" />
-            Review Queue
+    <div className="h-[calc(100vh-45px)] bg-background flex">
+      {/* Main list */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Page header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#33ff33]/18 bg-[#1e1d20] sticky top-0 z-10">
+          <h1 className="text-sm font-bold text-[#33ff33] uppercase tracking-widest flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-400" />
+            REVIEW QUEUE
           </h1>
-          
-          <div className="flex items-center gap-2">
-            <Badge variant={pendingReview === 'ai' ? 'default' : 'outline'} className="gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-              AI needs review
-            </Badge>
-            <Badge variant={pendingReview === 'human' ? 'default' : 'outline'} className="gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              Approved
-            </Badge>
+          <div className="flex items-center gap-3 text-xs">
+            <span className={pendingReview === 'ai' ? 'text-amber-400 font-bold' : 'text-[#33ff33]/40'}>
+              ● AI ({assets.length})
+            </span>
+            <span className="text-[#33ff33]/40">
+              {focusedIndex + 1} of {assets.length}
+            </span>
           </div>
         </div>
 
         {/* Empty state */}
         {emptyState ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-[60vh] text-[#33ff33]/40">
             {pendingReview === 'ai' ? (
               <>
-                <Check className="h-16 w-16 mb-4 text-green-500" />
-                <h2 className="text-xl font-semibold mb-2">All caught up!</h2>
-                <p>All AI-tagged assets have been reviewed.</p>
-                <p className="text-sm mt-4">Switch view to see human-reviewed assets or untagged content.</p>
+                <Check className="h-12 w-12 mb-4 text-[#33ff33]" />
+                <p className="text-sm font-bold uppercase text-[#33ff33]">All caught up!</p>
+                <p className="text-xs mt-2">All AI-tagged assets have been reviewed.</p>
               </>
             ) : (
               <>
-                <XOctagon className="h-16 w-16 mb-4 text-muted-foreground" />
-                <h2 className="text-xl font-semibold mb-2">No assets to review</h2>
-                <p>Switch view to see AI-tagged assets that need review.</p>
+                <XOctagon className="h-12 w-12 mb-4" />
+                <p className="text-sm font-bold uppercase">No assets to review</p>
               </>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Current focused asset preview */}
-            {asset && (
-              <div className="sticky top-0 bg-background z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline">{asset.type}</Badge>
-                    <span className="text-sm text-muted-foreground">#{asset.id}</span>
-                    {asset.flagged_by === 'ai' && (
-                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                        AI reviewed
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {focusedIndex + 1} of {assets.length}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Asset list */}
+          <div className="divide-y divide-[#33ff33]/10">
             {assets.map((a, idx) => {
               const isFocused = idx === focusedIndex;
               return (
                 <div
                   key={a.id}
                   className={cn(
-                    'border rounded-lg p-4 transition-all',
+                    'px-5 py-3 cursor-pointer transition-all duration-200',
                     isFocused
-                      ? 'border-primary bg-primary/5 shadow-md'
-                      : 'hover:bg-muted/50'
+                      ? 'bg-[#33ff33]/8 border-l-2 border-l-[#33ff33]'
+                      : 'border-l-2 border-l-transparent hover:bg-[#33ff33]/5',
                   )}
                   onClick={() => setFocusedIndex(idx)}
-                  tabIndex={0}
                   role="button"
+                  tabIndex={0}
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  {/* Row header */}
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <Badge variant={a.type === 'tweet' ? 'default' : 'secondary'}>
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 border border-[#33ff33]/30 text-[#33ff33]">
                         {a.type}
-                      </Badge>
-                      <span className="text-xs font-mono text-muted-foreground">#{a.id}</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-[#33ff33]/40">{a.id}</span>
                       {a.flagged_by === 'ai' && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
-                          ⚠️ AI tag
-                        </span>
+                        <span className="text-[10px] text-amber-400 font-bold">AI</span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <span className="text-[10px] text-[#33ff33]/30">
                       {a.created_at && new Date(a.created_at).toLocaleDateString()}
-                    </div>
+                    </span>
                   </div>
 
-                  <div className="text-sm mb-2">{a.text || 'No text content'}</div>
+                  {/* Content preview */}
+                  <p className="text-xs text-[#E0E0E0] line-clamp-2 mb-2 leading-relaxed">
+                    {a.text || a.visual_summary || 'No content'}
+                  </p>
 
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {a.tags?.slice(0, 4).map((tag: string) => (
+                  {/* Tag pills */}
+                  <div className="flex flex-wrap gap-1">
+                    {a.tags?.slice(0, 5).map((tag: string) => (
                       <span
                         key={tag}
-                        className={`text-xs px-2 py-0.5 rounded-full border ${getTagClassForAsset(tag)}`}
+                        className="text-[10px] px-1.5 py-0.5 border border-amber-600/40 text-amber-400 bg-amber-900/20"
                       >
                         {tag}
                       </span>
                     ))}
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Stats: 💙 {a.stats?.likes || 0} 🔁 {a.stats?.retweets || 0} 💬 {a.stats?.replies || 0}
+                    {(a.tags?.length || 0) > 5 && (
+                      <span className="text-[10px] text-[#33ff33]/30">+{a.tags.length - 5}</span>
+                    )}
                   </div>
                 </div>
               );
@@ -367,117 +348,83 @@ export function ReviewQueue({ initialFlagged = 'ai' }: ReviewQueueProps) {
         )}
       </div>
 
-      {/* Detail panel */}
+      {/* Right action panel */}
       {!emptyState && asset && (
-        <div className="w-80 border-l bg-muted/30">
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Quick Actions</h2>
-              <Badge variant="outline">#{asset.id}</Badge>
-            </div>
+        <div className="w-72 border-l border-[#33ff33]/18 bg-[#1e1d20] flex flex-col">
+          {/* Panel header */}
+          <div className="px-4 py-3 border-b border-[#33ff33]/18">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#33ff33]">
+              Quick Actions
+            </p>
           </div>
 
-          <div className="p-4 space-y-4">
-            {/* Asset preview */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {/* Content preview */}
             <div>
-              <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#33ff33] mb-1.5">
                 Content
-              </h3>
-              <p className="text-sm whitespace-pre-wrap">{asset.text || 'No content'}</p>
+              </p>
+              <p className="text-xs text-[#E0E0E0] whitespace-pre-wrap leading-relaxed line-clamp-6">
+                {asset.text || asset.visual_summary || 'No content'}
+              </p>
             </div>
 
-            {/* Tag stats */}
-            {/* <div>
-              <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-                Tags
-              </h3>
-              <div className="space-y-1">
-                {asset.tags?.map((tag: string) => (
-                  <div key={tag} className="flex items-center justify-between text-sm">
-                    <span className={getTagClassForAsset(tag)}>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs ${getTagClassForAsset(
-                          tag
-                        )}`}
-                      >
-                        {tag}
-                      </span>
-                    </span>
+            <div className="border-t border-[#33ff33]/12 pt-3">
+              {/* Keyboard shortcuts */}
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#33ff33] mb-2">
+                Shortcuts
+              </p>
+              <div className="space-y-1 text-[10px]">
+                {[
+                  ['A', 'Approve'],
+                  ['S', 'Skip'],
+                  ['R', 'Reject'],
+                  ['J / ↓', 'Next'],
+                  ['K / ↑', 'Prev'],
+                ].map(([key, action]) => (
+                  <div key={key} className="flex justify-between">
+                    <span className="font-bold text-[#33ff33] font-mono">{key}</span>
+                    <span className="text-[#33ff33]/50">{action}</span>
                   </div>
                 ))}
               </div>
-            </div> */}
+            </div>
 
-            <Separator />
-
-            {/* Action buttons */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-                Keyboard shortcuts
-              </h3>
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span>A</span>
-                  <span className="text-muted-foreground">Approve all tags ✅</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>S</span>
-                  <span className="text-muted-foreground">Skip to next ⏭️</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>R</span>
-                  <span className="text-muted-foreground">Reject ❌</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>J / ↓</span>
-                  <span className="text-muted-foreground">Next asset</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>K / ↑</span>
-                  <span className="text-muted-foreground">Previous asset</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  className="bg-green-600 hover:bg-green-700"
+            <div className="border-t border-[#33ff33]/12 pt-3 space-y-2">
+              {/* Single-asset actions */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  className={btnGreen}
                   onClick={() => approve(focusedIndex)}
                   disabled={asset.flagged_by === 'human'}
                 >
-                  <Check className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => skip(focusedIndex)}
-                >
+                  <Check className="h-3 w-3" /> Approve
+                </button>
+                <button className={btnOutline} onClick={() => skip(focusedIndex)}>
                   Skip
-                </Button>
-                <Button
-                  className="bg-red-600 hover:bg-red-700"
+                </button>
+                <button
+                  className={btnRed}
                   onClick={() => reject(focusedIndex)}
                   disabled={asset.flagged_by === 'human'}
                 >
-                  <X className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
-                <Button variant="outline" onClick={() => setFocusedIndex(0)}>
-                  Go to top
-                </Button>
+                  <X className="h-3 w-3" /> Reject
+                </button>
+                <button className={btnOutline} onClick={() => setFocusedIndex(0)}>
+                  Top
+                </button>
               </div>
 
-              <Separator />
-
-              <Button variant="outline" className="w-full" onClick={approveAll}>
-                <Check className="h-4 w-4 mr-2" />
-                Approve all ({assets.length})
-              </Button>
-              <Button variant="outline" className="w-full" onClick={rejectAll}>
-                <X className="h-4 w-4 mr-2" />
-                Reject all ({assets.length})
-              </Button>
+              {/* Bulk actions */}
+              <button className={`${btnOutline} w-full justify-center`} onClick={approveAll}>
+                <Check className="h-3 w-3" /> Approve all ({assets.length})
+              </button>
+              <button
+                className={`${btnBase} w-full justify-center text-red-400 border-red-700/40 hover:bg-red-900/20 hover:border-red-600/60`}
+                onClick={rejectAll}
+              >
+                <X className="h-3 w-3" /> Reject all ({assets.length})
+              </button>
             </div>
           </div>
         </div>
