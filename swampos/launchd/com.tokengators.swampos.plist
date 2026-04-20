@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tokengators.swampos</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/Users/operator/repos/MainFrame/swampos/server.js</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/operator/repos/MainFrame/swampos</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PORT</key>
+    <string>4000</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/operator/Library/Logs/swampos.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/operator/Library/Logs/swampos.error.log</string>
+</dict>
+</plist>

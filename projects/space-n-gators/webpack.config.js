@@ -24,8 +24,9 @@ module.exports = {
     },
     compress: true,
     port: 8082,
+    host: '0.0.0.0',   // bind to all interfaces — allows LAN access
     hot: true,
-    open: true,
+    open: false,        // don't auto-open browser when running as a service
   },
   mode: 'development',
 };

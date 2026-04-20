@@ -1,0 +1,50 @@
+[
+  {
+    "id": "gatorpedia",
+    "name": "Gatorpedia",
+    "description": "Asset registry + media browser",
+    "icon": "🐊",
+    "label": "com.tokengators.gatorpedia",
+    "port": 3001,
+    "url": "http://localhost:3001",
+    "plist": "/Users/operator/repos/MainFrame/projects/media-assets/launchd/com.tokengators.gatorpedia.plist",
+    "logFile": "/Users/operator/Library/Logs/gatorpedia.log",
+    "color": "#33ff33"
+  },
+  {
+    "id": "gatorrr",
+    "name": "Gatorrr",
+    "description": "Frogger-style gator game",
+    "icon": "🎮",
+    "label": "com.tokengators.gatorrr",
+    "port": 8081,
+    "url": "http://localhost:8081",
+    "plist": "/Users/operator/repos/MainFrame/projects/gatorrr/launchd/com.tokengators.gatorrr.plist",
+    "logFile": "/Users/operator/Library/Logs/gatorrr.log",
+    "color": "#ff6b35"
+  },
+  {
+    "id": "space-n-gators",
+    "name": "Space-n-Gators",
+    "description": "Space Invaders + Brick Breaker hybrid",
+    "icon": "🚀",
+    "label": "com.tokengators.space-n-gators",
+    "port": 8082,
+    "url": "http://localhost:8082",
+    "plist": "/Users/operator/repos/MainFrame/projects/space-n-gators/launchd/com.tokengators.space-n-gators.plist",
+    "logFile": "/Users/operator/Library/Logs/space-n-gators.log",
+    "color": "#627EEA"
+  },
+  {
+    "id": "swampos",
+    "name": "SwampOS",
+    "description": "This dashboard",
+    "icon": "⚙️",
+    "label": "com.tokengators.swampos",
+    "port": 4000,
+    "url": "http://localhost:4000",
+    "plist": "/Users/operator/repos/MainFrame/swampos/launchd/com.tokengators.swampos.plist",
+    "logFile": "/Users/operator/Library/Logs/swampos.log",
+    "color": "#FFD641"
+  }
+]
