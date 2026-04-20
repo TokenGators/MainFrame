@@ -1,3 +1,15 @@
+// Module-level singleton — one AudioContext for the entire session.
+// Creating multiple AudioContexts across scene transitions leaks resources
+// and causes browsers to suspend new contexts silently.
+let _instance = null;
+
+export function getSoundManager() {
+  if (!_instance) {
+    _instance = new SoundManager();
+  }
+  return _instance;
+}
+
 export default class SoundManager {
   constructor() {
     // Create AudioContext (handle browser prefixes)

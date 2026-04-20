@@ -55,7 +55,7 @@ export default class CollisionSystem {
         );
 
         // Play eat sound
-        this.scene.sound?.play?.('eat');
+        this.scene.soundMgr?.play?.('eat');
 
         // Check win condition
         if (gameState.frogsEaten >= 10) {
@@ -103,7 +103,7 @@ export default class CollisionSystem {
               gameState.padPenaltyTotal += SCORE_PAD_PENALTY;
 
               // Play pad fill sound
-              this.scene.sound?.play?.('padFill');
+              this.scene.soundMgr?.play?.('padFill');
 
               // Trigger pad flash effect (if available on scene)
               if (this.scene.triggerPadFlash) {
@@ -156,7 +156,7 @@ export default class CollisionSystem {
     if (gb.x < pb.x + pb.width &&
         gb.x + gb.width > pb.x &&
         gb.y < pb.y + pb.height &&
-        gb.y + pb.height > pb.y) {
+        gb.y + gb.height > pb.y) {
       powerUp.collect(gator);
     }
   }

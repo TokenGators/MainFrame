@@ -1,5 +1,13 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE, C } from '../constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
+
+const PS2P   = "'Press Start 2P', monospace";
+const GREEN  = '#00E436';
+const ORANGE = '#FFA300';
+const WHITE  = '#FFF1E8';
+const GRAY   = '#C2C3C7';
+const DIM    = '#5F574F';
+const ROW_H  = 18; // px between leaderboard rows
 
 export default class LeaderboardScene extends Phaser.Scene {
   constructor() {
@@ -9,191 +17,185 @@ export default class LeaderboardScene extends Phaser.Scene {
   init(data) {
     this.score = data?.score || 0;
     this.level = data?.level || 1;
-    this.name = ['A', 'A', 'A'];
-    this.cursorIndex = 0;
-    this.nameEntered = false;
+    this.name  = ['A', 'A', 'A'];
+    this.cursorIndex  = 0;
+    this.nameEntered  = false;
+    this.cursorVisible = true;
+    this.nameInputText = null;
+    this.top5Entries   = null;
+    this.newEntry      = null;
   }
 
   create() {
-    const centerX = CANVAS_WIDTH / 2;
-    const centerY = CANVAS_HEIGHT / 2;
+    const cx = CANVAS_WIDTH  / 2;
+    const cy = CANVAS_HEIGHT / 2;
 
-    // Background overlay
-    this.add.rectangle(centerX, centerY, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.9).setOrigin(0);
+    // Background
+    this.add.rectangle(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000).setOrigin(0);
 
     // Title
-    this.add.text(centerX, centerY - 110, 'HIGH SCORES', {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: '#FFA300'
+    this.add.text(cx, 18, 'HIGH SCORES', {
+      fontFamily: PS2P, fontSize: '12px', color: ORANGE,
     }).setOrigin(0.5);
 
-    // Read leaderboard from localStorage
+    // Load leaderboard
     let leaderboard = [];
     try {
       leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
-    } catch (e) {
-      // Ignore localStorage errors
-    }
+    } catch (e) { /* ignore */ }
 
-    // Check if current score makes top 5
-    const newEntry = { score: this.score, level: this.level, name: this.name.join(''), date: new Date().toISOString() };
+    // Build combined list and check if we made top 5
+    this.newEntry = {
+      score: this.score,
+      level: this.level,
+      name:  this.name.join(''),
+      date:  new Date().toISOString(),
+    };
+    const newEntry = this.newEntry;
     const combined = [...leaderboard, newEntry];
     combined.sort((a, b) => b.score - a.score);
+    if (combined.length > 5) combined.length = 5;
 
-    // Trim to top 5
-    if (combined.length > 5) {
-      combined.length = 5;
-    }
+    const madeTop5 = combined.some(e => e.score === this.score && e.date === newEntry.date);
 
-    // Save if we made top 5
-    let madeTop5 = false;
-    if (combined.length === 5) {
-      // Find if our score is in the top 5
-      madeTop5 = combined.some(e => e.score === this.score && e.date === newEntry.date);
-    }
-
-    // If not in top 5, show scores and return to title
     if (!madeTop5) {
-      this.showLeaderboard(combined, centerX, centerY);
-      this.showReturnPrompt(centerX, centerY + 120);
+      this._drawBoard(combined, cx, 42, -1);
+      this._drawReturnPrompt(cx, CANVAS_HEIGHT - 20);
       return;
     }
 
-    // We made top 5 - show name input
+    // Made top 5 — show board and name entry
     this.top5Entries = combined;
-    this.showLeaderboard(combined, centerX, centerY - 20);
-    this.showNameInput(centerX, centerY + 40);
+    this._drawBoard(combined, cx, 42, this._findNewEntryIndex(combined));
+    this._drawNameEntry(cx, 42 + 5 * ROW_H + 14);
 
-    // Setup keyboard input for name entry
     this.input.keyboard.on('keydown', (event) => {
       if (this.nameEntered) return;
-
-      if (event.key === 'ArrowUp') {
-        this.changeLetter(1);
-      } else if (event.key === 'ArrowDown') {
-        this.changeLetter(-1);
-      } else if (event.key === 'ArrowRight' || event.key === 'Enter') {
-        this.advanceCursor();
-      }
+      if      (event.key === 'ArrowUp')                           this._changeLetter(1);
+      else if (event.key === 'ArrowDown')                         this._changeLetter(-1);
+      else if (event.key === 'ArrowRight' || event.key === 'Enter') this._advanceCursor();
     });
   }
 
-  changeLetter(direction) {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const currentIndex = letters.indexOf(this.name[this.cursorIndex]);
-    const newIndex = (currentIndex + direction + 26) % 26;
-    this.name[this.cursorIndex] = letters[newIndex];
-    this.updateNameDisplay();
+  _findNewEntryIndex(entries) {
+    return entries.findIndex(e => e.date === this.newEntry.date);
   }
 
-  advanceCursor() {
+  _drawBoard(entries, cx, startY, highlightIdx) {
+    for (let i = 0; i < 5; i++) {
+      const entry  = entries[i];
+      const rowY   = startY + i * ROW_H;
+      const isNew  = (i === highlightIdx);
+      const color  = isNew ? GREEN : (entry ? WHITE : DIM);
+
+      const rankStr  = `${i + 1}.`;
+      const nameStr  = entry ? (entry.name || '---').substring(0, 3) : '---';
+      const scoreStr = entry ? entry.score.toString().padStart(6, ' ') : '    ---';
+      const lvlStr   = entry ? `L${entry.level || 1}` : '';
+
+      this.add.text(cx - 88, rowY, rankStr,  { fontFamily: PS2P, fontSize: '7px', color }).setOrigin(0, 0.5);
+      const nameTxt = this.add.text(cx - 68, rowY, nameStr, { fontFamily: PS2P, fontSize: '7px', color }).setOrigin(0, 0.5);
+      this.add.text(cx - 10, rowY, scoreStr, { fontFamily: PS2P, fontSize: '7px', color }).setOrigin(0, 0.5);
+      this.add.text(cx + 60, rowY, lvlStr,   { fontFamily: PS2P, fontSize: '7px', color: GRAY }).setOrigin(0, 0.5);
+
+      // Keep a reference to the new-entry name so _submitName can update it in-place
+      if (isNew) this._entryNameText = nameTxt;
+
+      // Arrow marker for new entry
+      if (isNew) {
+        this.add.text(cx - 100, rowY, '\u25b6', {
+          fontFamily: PS2P, fontSize: '6px', color: GREEN,
+        }).setOrigin(0, 0.5);
+      }
+    }
+  }
+
+  _drawNameEntry(cx, y) {
+    this._nameLabel = this.add.text(cx, y, 'ENTER YOUR NAME', {
+      fontFamily: PS2P, fontSize: '6px', color: ORANGE,
+    }).setOrigin(0.5);
+
+    this._nameY = y + 14;
+    this._nameCX = cx;
+    this._updateNameDisplay();
+
+    // Blink cursor — store event ref so we can kill it on submit
+    this._blinkEvent = this.time.addEvent({
+      delay: 350,
+      loop: true,
+      callback: () => {
+        this.cursorVisible = !this.cursorVisible;
+        this._updateNameDisplay();
+      },
+    });
+  }
+
+  _updateNameDisplay() {
+    if (this.nameInputText) this.nameInputText.destroy();
+
+    let str = '';
+    for (let i = 0; i < 3; i++) {
+      const active = (i === this.cursorIndex) && this.cursorVisible;
+      str += active ? `[${this.name[i]}]` : ` ${this.name[i]} `;
+      if (i < 2) str += ' ';
+    }
+
+    this.nameInputText = this.add.text(this._nameCX, this._nameY, str, {
+      fontFamily: PS2P,
+      fontSize:   '10px',
+      color:      WHITE,
+    }).setOrigin(0.5);
+  }
+
+  _changeLetter(dir) {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const cur = letters.indexOf(this.name[this.cursorIndex]);
+    this.name[this.cursorIndex] = letters[(cur + dir + 26) % 26];
+    this._updateNameDisplay();
+  }
+
+  _advanceCursor() {
     if (this.cursorIndex < 2) {
       this.cursorIndex++;
+      this._updateNameDisplay();
     } else {
-      // Last character - submit name
-      this.submitName();
+      this._submitName();
     }
-    this.updateNameDisplay();
   }
 
-  submitName() {
+  _submitName() {
     this.nameEntered = true;
+    const finalName = this.name.join('');
 
-    // Update the entry with the final name
-    const entryIndex = this.top5Entries.findIndex(e => e.score === this.score && e.date === (new Date().toISOString()));
-    if (entryIndex >= 0) {
-      this.top5Entries[entryIndex].name = this.name.join('');
-    }
+    // Update the in-memory entry
+    const idx = this.top5Entries.findIndex(e => e.date === this.newEntry.date);
+    if (idx >= 0) this.top5Entries[idx].name = finalName;
 
-    // Save to localStorage
+    // Persist
     try {
       localStorage.setItem('gatorrr_leaderboard', JSON.stringify(this.top5Entries));
-    } catch (e) {
-      // Ignore localStorage errors
+    } catch (e) { /* ignore */ }
+
+    // Update the displayed name text in the board row without restarting
+    if (this._entryNameText) {
+      this._entryNameText.setText(finalName.substring(0, 3));
+      this._entryNameText.setColor('#00E436');
     }
 
-    this.showLeaderboard(this.top5Entries, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
-    this.showReturnPrompt(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
+    // Tear down name input area and show return prompt
+    if (this.nameInputText) { this.nameInputText.destroy(); this.nameInputText = null; }
+    if (this._nameLabel)     { this._nameLabel.destroy();    this._nameLabel = null; }
+    if (this._blinkEvent)    { this._blinkEvent.remove();    this._blinkEvent = null; }
+
+    this._drawReturnPrompt(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 20);
   }
 
-  showLeaderboard(entries, centerX, y) {
-    const style = { fontSize: '16px', color: '#ffffff', fontFamily: 'monospace' };
-    const spacing = 24;
-
-    entries.forEach((entry, i) => {
-      const isCurrent = entry.score === this.score && entry.name === this.name.join('');
-      const color = isCurrent ? '#00E436' : '#ffffff';
-      const rankText = (i + 1).toString().padStart(2, ' ');
-
-      this.add.text(centerX - 80, y + 10 + (i * spacing), `${rankText}.`, { ...style, color });
-      this.add.text(centerX - 40, y + 10 + (i * spacing), entry.name || '---', { ...style, color });
-      this.add.text(centerX + 40, y + 10 + (i * spacing), entry.score.toString(), { ...style, color });
-      this.add.text(centerX + 100, y + 10 + (i * spacing), `LVL ${entry.level || 1}`, { ...style, color });
-    });
-
-    // Fill empty slots
-    for (let i = entries.length; i < 5; i++) {
-      const rankText = (i + 1).toString().padStart(2, ' ');
-      this.add.text(centerX - 80, y + 10 + (i * spacing), `${rankText}.`, { ...style, color: '#666' });
-      this.add.text(centerX - 40, y + 10 + (i * spacing), '---', { ...style, color: '#666' });
-      this.add.text(centerX + 40, y + 10 + (i * spacing), '---', { ...style, color: '#666' });
-      this.add.text(centerX + 100, y + 10 + (i * spacing), 'LVL -', { ...style, color: '#666' });
-    }
-  }
-
-  showNameInput(centerX, y) {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const cursor = '_';
-    const blinkSpeed = 400;
-
-    // Blinking cursor tween
-    this.tweens.add({
-      targets: this,
-      cursorVisible: true,
-      duration: blinkSpeed,
-      yoyo: true,
-      repeat: -1,
-      onUpdate: () => {
-        this.updateNameDisplay();
-      }
-    });
-  }
-
-  updateNameDisplay() {
-    // Remove existing name input text if any
-    if (this.nameInputText) {
-      this.nameInputText.destroy();
-    }
-
-    const centerX = CANVAS_WIDTH / 2;
-    const y = CANVAS_HEIGHT / 2 + 40;
-
-    // Build name string with cursor
-    let nameText = '';
-    for (let i = 0; i < 3; i++) {
-      const bracketStart = (i === this.cursorIndex && this.cursorVisible) ? '[' : ' ';
-      const letter = this.name[i];
-      const bracketEnd = (i === this.cursorIndex && this.cursorVisible) ? ']' : ' ';
-      nameText += `${bracketStart}${letter}${bracketEnd} `;
-    }
-
-    this.nameInputText = this.add.text(centerX, y, nameText, {
-      fontSize: '24px',
-      fontFamily: 'monospace',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2
+  _drawReturnPrompt(cx, y) {
+    const t = this.add.text(cx, y, 'PRESS ANY KEY', {
+      fontFamily: PS2P, fontSize: '7px', color: GREEN,
     }).setOrigin(0.5);
 
-    this.nameInputText.setText(nameText);
-  }
-
-  showReturnPrompt(centerX, y) {
-    this.add.text(centerX, y, 'Press any key to continue', {
-      fontSize: '16px',
-      color: '#00E436'
-    }).setOrigin(0.5);
+    this.tweens.add({ targets: t, alpha: 0, duration: 350, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown', () => {
       this.scene.start('TitleScene');

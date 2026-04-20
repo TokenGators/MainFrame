@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC } from '../constants.js';
-import SoundManager from '../audio/SoundManager.js';
+import { getSoundManager } from '../audio/SoundManager.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -67,12 +67,9 @@ export default class GameOverScene extends Phaser.Scene {
     // Total score
     this.add.text(centerX, centerY + 60, `Total: ${totalScore}`, { ...style, color: '#FFA300', fontSize: '18px' }).setOrigin(0.5);
 
-    // Play game over sound
-    const sound = new SoundManager();
-    if (sound.ctx.state === 'suspended') {
-      sound.ctx.resume();
-    }
-    sound.play('gameOver');
+    // Play game over sound (singleton — no new AudioContext created)
+    const sound = getSoundManager();
+    sound.ctx.resume().then(() => sound.play('gameOver'));
 
     // Transition to leaderboard after 2 seconds
     this.time.delayedCall(2000, () => {

@@ -1,10 +1,19 @@
-# GATORRR - Product Requirements Document v3.0
+# GATORRR - Product Requirements Document v3.1
 
 **Game Title:** TokenGators Gator Frogger ("GATORRR")
 **Platform:** Web (Phaser.js)
 **Genre:** Tower Defense + Frogger Hybrid
-**Status:** Phase 2 - Retro Rendering Overhaul + Bug Fixes
-**Target Release:** End of Phase 2 (v3.0 with retro pipeline + assets)
+**Status:** Cycles A–F Complete (QA errors unresolved — see Section 17)
+**Target Release:** Post QA remediation
+
+---
+
+## Revision History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 3.0 | 2026-03-11 | Retro rendering overhaul, 320x180 canvas, PICO-8 palette, 4 critical bug fixes |
+| 3.1 | 2026-04-11 | Incorporates all Cycle A–F features: smooth movement, title screen, game over screens, score system, frog types, local leaderboard, health power-ups, frog AI, level system, gator entry, dive mode, bite attacks, score popups, sound effects, pad fill feedback, arcade leaderboard with name entry |
 
 ---
 
@@ -13,14 +22,18 @@
 **Core Concept:**
 You are a gator defending your home lily pads from an invasion of frogs. The frogs hop across logs floating in the river trying to reach your side. Your job: **eat the frogs before they overwhelm your lily pads**.
 
-**Win Condition:** Eat 10 frogs
+The gator starts each level on the bank, watching the river. You choose when to enter. Once in the water you are the apex predator — you can dive to evade, bite to clear obstacles, and hunt frogs on logs or in the open water.
+
+**Win Condition:** Eat 10 frogs to clear a level. Levels continue indefinitely; the goal is maximizing score.
 **Lose Conditions:**
-- All 3 HP depleted (hit by logs)
+- All 3 HP depleted (log collision while surfaced)
 - All 5 lily pads filled by frogs
+
+**Score Goal:** Accumulate the highest possible score across multiple levels.
 
 ---
 
-## 2. Retro Rendering Philosophy (NEW - FOUNDATIONAL)
+## 2. Retro Rendering Philosophy (FOUNDATIONAL)
 
 > "Retro style is not just about visible pixels. It is also about reduced visual information."
 
@@ -58,7 +71,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: 4,           // Whole-number upscale (4x)
   },
-  scene: [BootScene, GameScene, GameOverScene],
+  scene: [BootScene, TitleScene, GameScene, LevelClearScene, GameOverScene, LeaderboardScene],
 };
 ```
 
@@ -74,13 +87,13 @@ All game visuals MUST use only these colors:
 | 4 | `0xAB5236` | Brown | Logs |
 | 5 | `0x5F574F` | Dark Gray | UI background bar |
 | 6 | `0xC2C3C7` | Light Gray | UI text (secondary) |
-| 7 | `0xFFF1E8` | White | UI text (primary), highlights |
-| 8 | `0xFF004D` | Red | Frogs (swimming state) |
+| 7 | `0xFFF1E8` | White | UI text (primary), highlights, health power-up |
+| 8 | `0xFF004D` | Red | Frogs (swimming state), damage flash, pad fill vignette |
 | 9 | `0xFFA300` | Orange | Frogs (on log), warnings |
-| 10 | `0xFFEC27` | Yellow | Lily pads (empty glow) |
-| 11 | `0x00E436` | Green | Gator |
-| 12 | `0x29ADFF` | Blue | Water surface |
-| 13 | `0x83769C` | Lavender | Reserved |
+| 10 | `0xFFEC27` | Yellow | Lily pads (empty glow), gold frog |
+| 11 | `0x00E436` | Green | Gator, green frog |
+| 12 | `0x29ADFF` | Blue | Water surface, blue frog |
+| 13 | `0x83769C` | Lavender | Purple frog |
 | 14 | `0xFF77A8` | Pink | HP low warning |
 | 15 | `0xFFCCAA` | Peach | Reserved |
 
@@ -94,9 +107,9 @@ All game visuals MUST use only these colors:
 
 ---
 
-## 3. Game World & Layout (UPDATED FOR 320x180)
+## 3. Game World & Layout (320x180, 16px Grid)
 
-### Screen Layout (16px Grid on 320x180 Canvas)
+### Screen Layout
 ```
 Col:  0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19
       |LB|LP|     RIVER (15 columns of logs)              |RB|RB|
@@ -112,7 +125,7 @@ L  = Log columns (cols 2-16, 15 columns)
 RB = Right Bank / Frog Spawn (cols 17-19)
 ```
 
-### Zone Definitions (in 16px tiles)
+### Zone Definitions
 | Zone | X Range (tiles) | X Range (px) | Width |
 |------|----------------|--------------|-------|
 | Left Bank | col 0 | 0-16 | 16px (1 tile) |
@@ -123,13 +136,13 @@ RB = Right Bank / Frog Spawn (cols 17-19)
 ### Vertical Layout
 | Zone | Row Range | Y Range (px) | Purpose |
 |------|-----------|--------------|---------|
-| HUD | row 0 | 0-16 | HP, Frogs, Pads display |
+| HUD | row 0 | 0-16 | HP, Score, Level, Bites display |
 | Play Area | rows 1-10 | 16-176 | Active gameplay |
 | Bottom | row 10 | 160-176 | Gator start zone |
 
 ---
 
-## 4. Lily Pads (UPDATED FOR 16px GRID)
+## 4. Lily Pads
 
 ### Location & Layout
 Lily pads are positioned in **knockouts** at **col 1** (x=16-32), creating safe landing spots adjacent to the leftmost log column.
@@ -147,173 +160,441 @@ Lily pads are positioned in **knockouts** at **col 1** (x=16-32), creating safe 
 
 ### Gameplay
 - Frogs hop from leftmost log (col 2) to lily pad (col 1)
-- Gator can move to col 1 to intercept frogs
-- Gator's movement bounds now include col 1 (NOT clamped to river only)
 - Each pad: 16x16 sprite, states: Empty (dark green) / Filled (dark red)
+- Each pad fill triggers: -300 score penalty, pad fill sound, red screen edge vignette flash (~300ms), brief pad pulse
+- **Gator access to col 1 is blocked** once in river (see Section 6 — Entry Confinement). Gator must intercept frogs in the river before they reach col 1.
+
+### Lose Condition
+All 5 pads filled → game over ("Pads Overrun").
+
+### Level Reset
+All pads reset to empty at the start of each new level.
 
 ---
 
 ## 5. Frogs
 
 ### Spawn Behavior
-- **Spawn location:** Right bank, col 17 (x=272+8=280), random row
-- **Frequency:** 1.5-2.25 second intervals (25% increase from original)
+- **Spawn location:** Right bank, col 17 (x=280), random row
+- **Frequency:** Level-dependent (see Section 12)
 - **Max active:** 6-8 frogs at once
 - **Grid alignment:** Always snapped to 16px grid
 
-### Frog State Machine
+### Frog Types & Spawn Weights
+| Type | Color | Hex | Points | Spawn Weight | Approx. per game |
+|------|-------|-----|--------|--------------|-----------------|
+| Green (basic) | Green | `0x00E436` | 200 | 60% | Most frogs |
+| Blue | Blue | `0x29ADFF` | 500 | 25% | ~10 per game |
+| Purple | Lavender | `0x83769C` | 1,000 | 10% | ~5 per game |
+| Red | Red | `0xFF004D` | 1,500 | 4% | ~2 per game |
+| Gold | Yellow | `0xFFEC27` | 2,000 | 1% | ~1 per game |
+
+Frog type is assigned at spawn. All types behave identically except for point value.
+
+### Frog AI — Smart River Crossing (Cycle C)
+Frogs are not mindless — they prefer logs as stepping stones. The behavior is governed by `FROG_SMARTNESS` (0.0–1.0, default 0.75).
+
+**State Machine:**
 ```
-SWIMMING -> [detect log] -> ON_LOG -> [ride 1-2s] -> SWIMMING
-   |                                                    |
-   +-- [wait > 2s in water] -> VULNERABLE -> [gator eats] -> DESPAWN
-                                    |
-                            [log arrives] -> ON_LOG
+ON_BANK -> [enters river] -> SWIMMING
+SWIMMING -> [detects log nearby] -> ON_LOG
+ON_LOG -> [rides log for 1-2s] -> [looks for next log]
+         -> [log available] -> SWIMMING (hop to next log)
+         -> [no log / smartness check fails] -> SWIMMING (falls in)
+SWIMMING -> [reaches col 1] -> ON_PAD (pad filled, frog despawns)
+SWIMMING -> [gator eats] -> DESPAWN
+ON_LOG -> [gator eats] -> DESPAWN
 ```
 
-### Movement (Grid-Based Hopping)
-- **Decision interval:** 500ms (0.5 seconds)
-- **Jump probability:** 60% jump, 40% wait
+**Smartness Dial:**
+- At 1.0: Frogs never fall into the water — they wait indefinitely for a safe log
+- At 0.0: Frogs jump regardless of what's in front of them
+- At 0.75 (default): Frogs make the right call most of the time but create hunting opportunities through occasional mistakes
+
+**Movement Rules:**
+- **Decision interval:** 500ms
 - **Directions:** UP, DOWN, LEFT only (never RIGHT)
 - **Movement unit:** 1 tile = 16px per hop
 - **Grid clamped:** Frogs stay within cols 1-17, rows 1-10
+- Frogs on logs ride the log's vertical position each frame
 
 ### Sprite
 - **Size:** 16x16 px
-- **Color by state:**
-  - SWIMMING: Red (`0xFF004D`)
-  - ON_LOG: Orange (`0xFFA300`)
-  - VULNERABLE: Pink flash (`0xFF77A8`)
+- **Color:** Determined by frog type (see table above)
+- **State tint:**
+  - ON_LOG: Orange tint (`0xFFA300`)
+  - SWIMMING: Base frog type color
+  - VULNERABLE (in water > 2s): Pink flash (`0xFF77A8`)
 
 ---
 
 ## 6. Gator (Player)
 
-### Controls
-- **Arrow Keys:** Up, Down, Left, Right
-- **Movement:** 16px per keypress (1 tile, grid-based)
-- **Bounds:** cols 0-19, rows 1-10 (full play area INCLUDING lily pad zone)
+### Starting State — Bank Entry (Cycle E)
+The gator starts each level on the **left bank (col 0)**, not in the river. The player can see frogs beginning to cross and choose their moment to enter.
 
-**CRITICAL FIX:** Gator movement MUST NOT be clamped to river bounds only. The gator needs to reach lily pads (col 1) to intercept frogs. Previous code clamped `riverBounds.left = 80`, making lily pads unreachable.
+- Gator is visible on the bank at game start
+- Player presses any directional key toward the river to enter
+- A splash visual plays on entry
+- **Once the gator enters the river, it cannot return to col 0 or access col 1 (lily pad zone)**
+- Confinement zone once entered: cols 2–16, rows 1–10
+
+Waiting on the bank is a valid strategy — more frogs will accumulate in the water — but every second is a second frogs move closer to lily pads.
+
+### Level Reset
+On each new level: gator returns to col 0 (bank), full HP, fresh entry choice, 3 bites restored.
+
+### Controls
+| Input | Action |
+|-------|--------|
+| Arrow keys | Move 1 tile (16px) in that direction |
+| Hold arrow key | Move continuously in that direction |
+| Space (hold) | Dive underwater |
+| Space (release) | Surface at current position |
+| Shift + direction | Bite the adjacent tile in that direction |
+
+### Movement
+- **Tile size:** 16px per keypress
+- **Smooth tween:** Each tile-to-tile move is a 80ms tween — no teleporting
+- **Hold to move continuously:** Holding a key triggers repeated moves
+- **Sprite flip:** Faces left when moving left, right when moving right
+- **Bounds (surfaced):** cols 2-16, rows 1-10 (river only, after entry)
+- **Bounds (bank):** col 0 only (before entry)
 
 ### Health System
-- **HP:** 3 (start with 3/3)
-- **Damage:** -1 HP per log collision
+- **HP:** 3 (start with 3/3, reset to 3 on each level)
+- **Damage:** -1 HP per log collision **while surfaced**
 - **Cooldown:** 500ms between damage hits
-- **Death:** HP = 0 -> Game Over
+- **Death:** HP = 0 → Game Over
+- **HP display:** Turns red in HUD at 1 HP remaining
 
 ### Eating Frogs
-- Gator + Frog overlap = eat frog
-- +1 to "Frogs Eaten" counter
-- Frog despawns
-- Win at 10 frogs eaten
+- Gator + Frog overlap (while surfaced) = eat frog
+- Surfacing on a frog tile = eat frog (Dive mode resolution)
+- +1 to "Frogs Eaten" counter; frog-type score added
+- Frog despawns, score popup appears
 
 ### Sprite
 - **Size:** 16x16 px
 - **Color:** Green (`0x00E436`)
 - **Damaged state:** Flash red (`0xFF004D`) on hit
-- **Start position:** col 10, row 9 (center-bottom of river)
+- **Dive state:** Visual — surface objects (logs, frogs) render at ~40% alpha; gator remains full opacity
 
 ---
 
-## 7. Logs (Obstacles) (RECONCILED)
+## 7. Dive Mode (Cycle E)
 
-### Agreed Specification
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Column count | **15** | Matches LOG_LAYOUT_SPEC (cols 2-16 on grid) |
-| Column width | **16px** (1 tile) | Replaces old 32px columns |
-| Log width | **10px** | Narrow within the 16px column |
-| Log height | **2-4 tiles** (32-64px) | Reduced from 2-6 to fit 320x180 |
-| Direction | Alternating UP/DOWN per column | Odd cols up, even cols down |
-| Speed | **8-20 px/sec** | Scaled down for 320x180 (was 80-150 at 800x600) |
-| Vertical gaps | **16, 32, 48, 64px** (1-4 tiles) | Randomized per log |
-| Logs per column | 3-5 (continuous wrapping) | Fills vertical space |
-| Log color | Brown (`0xAB5236`) | From PICO-8 palette |
+The gator can dive at any time while in the river. Submerged, it is invisible to frogs and immune to log damage.
 
-### Collision with Gator
+### Rules
+- **Activate:** Hold Space
+- **Deactivate:** Release Space (surfaces at current position)
+- **Movement:** Gator can move normally while diving
+- **Frog detection:** Frogs do not react to a diving gator
+- **Log damage:** Logs cannot damage gator while diving
+- **Eating:** Cannot eat frogs while submerged
+- **Bite:** Cannot bite while diving
+
+### Breath Meter
+- Breath depletes while diving (displayed in HUD)
+- When breath reaches 0: automatic surface at current position (regardless of log/frog position)
+- Breath refills **slowly** while surfaced (not instant — players must pace their dives)
+
+### Surfacing Outcomes
+| Surface on... | Result |
+|---------------|--------|
+| Empty water | Safe |
+| Log tile | -1 HP (same as normal log collision) |
+| Frog tile | Frog eaten, gator now exposed to logs |
+
+### Visual Approach
+While diving: surface objects (logs, frogs) render at ~40% alpha; gator remains full opacity. Fallback if jarring: brief flash on dive/surface with subtle water tint shift.
+
+---
+
+## 8. Bite Attacks (Cycle E)
+
+The gator starts each level with **3 bites**. A bite is a targeted attack on the adjacent tile in any direction.
+
+### Rules
+- **Activate:** Shift held (arms bite mode — visual indicator on gator/HUD)
+- **Fire:** Shift + direction key (one tile range)
+- Cannot bite while diving
+- Bite count at 0: Shift key does nothing
+
+### Bite Outcomes
+| Target | Result |
+|--------|--------|
+| Log segment | Log destroyed permanently; log spawning continues normally; -1 bite; +100 pts |
+| Frog on a log | Frog eaten + log destroyed; -1 bite; +frog value + 100 pts |
+| Swimming frog | Frog eaten; -1 bite; +frog value (no log bonus — wasteful, normal collision is free) |
+| Empty water | Bite wasted; -1 bite; 0 pts |
+
+### HUD
+Bite count shown in HUD. Starts at 3. No additional bites in base game (placeholder for future power-up system).
+
+### Level Reset
+3 bites restored at the start of each new level.
+
+---
+
+## 9. Logs (Obstacles)
+
+### Specification
+| Parameter | Value |
+|-----------|-------|
+| Column count | **15** (cols 2-16 on grid) |
+| Column width | **16px** (1 tile) |
+| Log width | **10px** (narrow within 16px column) |
+| Log height | **2-4 tiles** (32-64px) |
+| Direction | Alternating UP/DOWN per column (odd cols up, even cols down) |
+| Speed | Level-dependent — see Section 12 |
+| Vertical gaps | **16, 32, 48, 64px** (1-4 tiles), randomized per log |
+| Logs per column | Level-dependent — see Section 12 |
+| Log color | Brown (`0xAB5236`) |
+
+### Collision with Gator (Surfaced Only)
 - Rectangle overlap detection
-- Gator touching log = -1 HP (with 500ms cooldown)
+- Gator touching log while surfaced = -1 HP (500ms cooldown)
 - Gator stays in place (no position reset)
+- Log damage does NOT apply while gator is diving
 
-### Safe Passage
-- Variable gaps ensure at least one navigable path
-- Smaller logs (2 tiles) create easier passages
-- Larger logs (4 tiles) create wider obstacles
+### Log Destruction (Bite)
+- Biting a log segment removes that segment permanently
+- Log column continues spawning normally (gap is eventually filled by new spawn)
 
 ---
 
-## 8. HUD (Heads-Up Display)
+## 10. Health Power-Ups (Cycle C)
+
+### Appearance
+- Visual: white box with red cross symbol (16x16, palette colors)
+- Spawns at a random position in the play area (not on a log or lily pad)
+- Approximately **3 power-ups** appear per 60-second level
+- Visible for **~8 seconds** before disappearing if uncollected
+- Spawn interval: ~20 seconds
+
+### Collection
+- Gator overlap = collect
+- +1 HP, capped at max HP (3)
+- Brief visual flash on collect
+
+### Strategy Note
+Creates a secondary movement decision: chase health vs. stay in position to eat frogs. Low-HP players will take risks to reach it.
+
+---
+
+## 11. Score System (Cycle B)
+
+### Point Values
+| Event | Points |
+|-------|--------|
+| Eat green frog | +200 |
+| Eat blue frog | +500 |
+| Eat purple frog | +1,000 |
+| Eat red frog | +1,500 |
+| Eat gold frog | +2,000 |
+| Bite + eat frog on log | +frog value +100 (log break bonus) |
+| Bite + destroy log only | +100 |
+| Frog reaches lily pad | −300 |
+| Win bonus (per level clear) | +1,000 |
+| Time remaining bonus | +10 pts per second left on clock |
+
+### Score Accumulation
+- Score carries forward across levels (does NOT reset on level clear)
+- Score resets to 0 only when restarting from a game over
+
+### Live Display
+- Score visible in HUD at all times, updates immediately on each event
+
+### Score Popups (Cycle F)
+When the gator eats a frog:
+- Point value floats up from the frog's position and fades out over ~1 second
+- Popup color matches the frog type (green text for green frog, yellow for gold, etc.)
+- Popups do not block gameplay or obscure the gator
+
+---
+
+## 12. Level System (Cycle D)
+
+### Win Condition Per Level
+Eat 10 frogs → Level Clear.
+
+### Level Progression
+| Level | Logs/Column | Log Speed Range | Frog Spawn Interval |
+|-------|-------------|-----------------|---------------------|
+| 1 | 3 | 8-12 px/sec | 2.0-2.5s |
+| 2 | 3-4 | 10-15 px/sec | 1.75-2.25s |
+| 3 | 4 | 12-18 px/sec | 1.5-2.0s |
+| 4+ | 4-5 | 15-20 px/sec | 1.5-2.0s |
+
+*Level 4 parameters are the maximum — level 5 and beyond repeat level 4's settings. No level cap.*
+
+### What Carries Between Levels
+- Score (accumulates)
+
+### What Resets Each Level
+- HP → full (3)
+- Lily pads → all empty
+- Active frogs → cleared
+- Timer → 60 seconds
+- Gator → returns to left bank (col 0)
+- Bites → 3
+
+### Level Clear Screen
+- On level clear: brief "LEVEL X CLEARED" screen (~2 seconds) showing current cumulative score
+- Auto-proceeds to next level after 2 seconds (no key press required)
+
+### HUD
+Current level number shown in HUD during gameplay.
+
+---
+
+## 13. HUD (Heads-Up Display)
 
 ### Layout (Row 0, 16px tall)
 ```
-HP:3/3   Frogs:0/10   Pads:0/5
+HP:3/3   LV:1   SCORE:00000   BITES:3   [BREATH BAR]
 ```
 
 ### Requirements
 - **Font:** Bitmap pixel font (NOT Arial, NOT system font)
 - **Colors:** White (`0xFFF1E8`) default, Red (`0xFF004D`) for warnings
-- **Position:** Row 0 (y=0 to y=16), overlaid on play area top
+- **Position:** Row 0 (y=0 to y=16)
 - **HP turns red at 1 HP remaining**
-- **Pads turns red at 4+ filled**
+- **Pads-filled warning** when 4+ pads are filled
+
+### HUD Elements
+| Element | Display | Warning |
+|---------|---------|---------|
+| HP | `HP:X/3` | Red at 1 HP |
+| Level | `LV:X` | — |
+| Score | Live point total | — |
+| Bites | `BITES:X` | Dims at 0 |
+| Breath | Bar (depletes while diving) | Red near empty |
 
 ---
 
-## 9. Game States & Flow
+## 14. Game States & Flow
 
-### PLAYING
+### Complete Flow
+```
+Boot → Title Screen → [Any key] → GameScene
+GameScene → [Eat 10 frogs] → LevelClearScene (~2s) → GameScene (next level)
+GameScene → [HP=0 or 5 pads filled] → GameOverScene (stats) → LeaderboardScene
+LeaderboardScene → [Any key] → TitleScene
+```
+
+### Title Screen (Cycle A)
+- Game title ("GATORRR")
+- One-sentence description
+- Controls listed clearly (arrow keys, space to dive, shift to bite)
+- Win and lose conditions explained simply
+- Blinking "PRESS ANY KEY TO START" prompt
+- High scores section: top 5 entries (rank, name, score, level reached)
+
+### Playing
 - All entities moving/spawning
 - Collision detection active
 - HUD updates in real-time
 - Delta time from Phaser's `update(time, delta)` used for ALL timing
 
-### GAME OVER (HP Lost)
+### Level Clear Screen
 ```
-GAME OVER
-Lost all HP
-Frogs: X/10
-Press R to Restart
-```
-
-### GAME OVER (Pads Full)
-```
-GAME OVER
-Pads overrun!
-Frogs: X/10
-Press R to Restart
+LEVEL [X] CLEARED!
+Score: [cumulative score]
+[auto-proceeds in ~2s]
 ```
 
-### WIN
+### Game Over Screen (HP Lost)
 ```
-YOU WIN!
-Ate 10 Frogs!
-Press R to Play Again
+GAME OVER
+The logs got you.
+Frogs Eaten: X
+Pads Filled: X/5
+Time: Xs
+Score: XXXXX
+[Press any key]
 ```
+
+### Game Over Screen (Pads Full)
+```
+GAME OVER
+The frogs overran your pads!
+Frogs Eaten: X
+Pads Filled: 5/5
+Time: Xs
+Score: XXXXX
+[Press any key]
+```
+
+### Leaderboard Screen (Cycle F)
+After game over stats screen, transitions to leaderboard:
+- Title: "HIGH SCORES" or "BEST 5"
+- Top 5 entries: rank, name (3 chars), score, level reached
+- If player made top 5: **name input is active** (3-char arcade entry)
+- If player did not make top 5: leaderboard shown as-is, player score highlighted below
+
+**Name Entry Rules:**
+- Exactly 3 characters, letters A–Z only, default "AAA"
+- Up/Down arrow: change current character
+- Right arrow / Enter: advance to next character
+- Enter on last character: submit
+- Leaderboard persists via localStorage across sessions
 
 ---
 
-## 10. Code Architecture (UPDATED)
+## 15. Sound Effects (Cycle F)
+
+Five sounds, synthesized via Web Audio API — no audio files required.
+
+| Event | Sound |
+|-------|-------|
+| Frog eaten | Short ascending blip (positive) |
+| Log hit / damage taken | Low thud or buzz (negative) |
+| Pad filled | Descending minor chord sting (bad news) |
+| Level clear | Short ascending jingle (celebratory) |
+| Game over | Descending tone sequence (defeat) |
+
+**Rules:**
+- Sound plays exactly when the event occurs — no delay
+- Web Audio API synthesis (no external audio files)
+- No background music in this phase
+- No mute toggle in this phase
+
+---
+
+## 16. Code Architecture
 
 ### File Structure
 ```
 projects/gatorrr/
 ├── src/
 │   ├── main.js                -> Phaser config (320x180, 4x zoom, scene list)
-│   ├── constants.js           -> PICO-8 palette, tile size, grid dims, speeds
+│   ├── constants.js           -> PICO-8 palette, tile size, grid dims, speeds, level params
 │   ├── scenes/
 │   │   ├── BootScene.js       -> Load sprite sheets, bitmap fonts
+│   │   ├── TitleScene.js      -> Title card, controls, leaderboard display
 │   │   ├── GameScene.js       -> Main gameplay (delegates to managers)
-│   │   └── GameOverScene.js   -> End screen (win/lose, restart)
+│   │   ├── LevelClearScene.js -> 2s level clear screen, auto-advance
+│   │   ├── GameOverScene.js   -> End screen (stats, transitions to leaderboard)
+│   │   └── LeaderboardScene.js -> Top 5, name entry if qualified
 │   ├── entities/
-│   │   ├── Gator.js           -> 16x16 sprite, grid movement, HP, direction
-│   │   ├── Frog.js            -> 16x16 sprite, AI state machine, grid movement
+│   │   ├── Gator.js           -> 16x16 sprite, grid movement, HP, dive, bite, entry state
+│   │   ├── Frog.js            -> 16x16 sprite, AI state machine, frog type, grid movement
 │   │   ├── Log.js             -> 10px wide rect, variable height, vertical movement
-│   │   └── LilyPad.js         -> 16x16 sprite, filled/empty state
+│   │   ├── LilyPad.js         -> 16x16 sprite, filled/empty state
+│   │   └── HealthPickup.js    -> White+red cross, timed despawn
 │   ├── managers/
-│   │   ├── LogColumnManager.js -> Generates and updates all 15 log columns
-│   │   ├── FrogSpawner.js      -> Spawn timing, max count, frog lifecycle
-│   │   └── CollisionSystem.js  -> All overlap checks
+│   │   ├── LogColumnManager.js -> 15 log columns, speed/count by level, bite destruction
+│   │   ├── FrogSpawner.js      -> Spawn timing, type weights, max count, frog lifecycle
+│   │   ├── CollisionSystem.js  -> All overlap checks
+│   │   └── ScoreManager.js     -> Points, popups, leaderboard localStorage
+│   ├── audio/
+│   │   └── SoundSynth.js      -> Web Audio API synthesis (5 sounds)
 │   └── ui/
-│       └── HUD.js             -> Bitmap text, palette-constrained colors
+│       ├── HUD.js             -> HP, level, score, bites, breath bar
+│       └── ScorePopup.js      -> Floating point popup on frog eat
 ├── public/
 │   ├── index.html
 │   └── assets/
@@ -327,154 +608,193 @@ projects/gatorrr/
 ```
 
 ### Dead Code to Remove
-The following files implement a **different game** (classic horizontal Frogger with cars, score, lives) and are never imported by the webpack entry point:
-- `src/entities/player.js` - Classic Frogger player (has Car/Log references)
-- `src/entities/car.js` - Car obstacles + CarManager (not in GATORRR)
-- `src/entities/log.js` - Horizontal log manager (GATORRR uses vertical logs)
-- `src/scenes/game.js` - Classic GameScene (different from FroggerScene)
-- `src/config.js` - Old 800x600 config with car/log lane definitions
-- `scenes/GameScene.js` - Root-level scene (CDN version, not webpack)
-- `config.js` - Root-level 480x480 config (CDN version)
+- `src/entities/player.js` - Classic Frogger player
+- `src/entities/car.js` - Car obstacles (not in GATORRR)
+- `src/entities/log.js` - Horizontal log manager
+- `src/scenes/game.js` - Classic GameScene
+- `src/config.js` - Old 800x600 config
+- `scenes/GameScene.js` - Root-level CDN version
+- `config.js` - Root-level 480x480 config
 - `index.html` - Root-level CDN entry point
 - `main.js` - Root-level CDN init script
 
-**Keep:** `src/main.js` (current entry point, will be rewritten)
-
 ---
 
-## 11. Critical Bug Fixes (MUST FIX)
+## 17. Critical Bug Fixes (MUST FIX — from v3.0)
+
+These bugs were identified in v3.0 and must be resolved:
 
 ### Bug 1: Frogs Can't Reach Lily Pads
 **File:** `src/main.js:452`
-**Problem:** `makeFrogDecision()` clamps `gridX` to river bounds (`Math.ceil(80/32)` = 3 minimum). Lily pads are at x=48 (grid col ~1.5). Frogs can never move left of col 3, so they never reach lily pads. The lose condition (all pads filled) can never trigger.
-**Fix:** In new 320x180 grid, frog movement must allow cols 1-17 (lily pad zone through right bank).
+**Problem:** `makeFrogDecision()` clamps `gridX` to minimum col 3. Lily pads are at col 1. Frogs can never trigger the lose condition.
+**Fix:** Frog movement must allow cols 1-17.
 
 ### Bug 2: Gator Can't Reach Lily Pads
 **File:** `src/main.js:289`
-**Problem:** `riverBounds.left = 80` clamps gator's leftward movement to x=96. Lily pads are at x=48. Gator can never reach lily pads to intercept frogs. The core defend-the-pads mechanic is broken.
-**Fix:** Gator bounds must encompass the full play area (cols 0-19), not just the river.
+**Problem:** `riverBounds.left = 80` clamps gator to x=96. Lily pads at x=48 are unreachable.
+**Fix:** With Cycle E entry confinement, gator in river is clamped to cols 2-16 (not cols 0-1). Pre-entry (bank), gator is at col 0. This replaces the old river-only bounds bug.
 
 ### Bug 3: Hardcoded Delta Time
-**Files:** `src/main.js:325` and `src/main.js:374`
-**Problem:** `log.speed * 0.016` and `frog.decisionTimer += 16` assume exactly 60 FPS. On any other frame rate, logs move at wrong speed and frog AI ticks at wrong rate.
-**Fix:** Use the `delta` parameter that Phaser already passes to `update(time, delta)`.
+**Files:** `src/main.js:325`, `src/main.js:374`
+**Problem:** `log.speed * 0.016` and `frog.decisionTimer += 16` assume 60 FPS.
+**Fix:** Use `delta` parameter from `update(time, delta)`.
 
-### Bug 4: Grid Snap Overwrites Log Riding
+### Bug 4: Grid-Snap Overwrites Log Riding
 **File:** `src/main.js:410-411`
-**Problem:** Lines `frog.x = frog.gridX * this.gridSize` and `frog.y = frog.gridY * this.gridSize` execute AFTER the ON_LOG state sets `frog.y = log.y`. The grid snap immediately overwrites the log's Y position, so frogs never visually ride logs.
-**Fix:** Skip grid-snap for frogs in ON_LOG state, or update gridY from log position.
+**Problem:** Grid-snap executes after `ON_LOG` sets frog.y = log.y, destroying the riding state.
+**Fix:** Skip grid-snap for frogs in ON_LOG state, or update `gridY` from log position.
 
 ---
 
-## 12. Development Phases (UPDATED)
+## 18. QA Status (Cycle F — Final Cycle)
+
+Cycle F was the last development cycle. QA returned errors at the end of Cycle F. Specific failures should be documented here once reviewed. Known QA categories from test plans:
+
+- [ ] Smoke suite (TC-SMOKE-01 through TC-SMOKE-10) — status unknown post-Cycle F
+- [ ] Asset loading failures (missing sprites, missing FROG_TYPES entries)
+- [ ] Missing gameState fields (frogsEaten, padsFilled, timeLeft, score, hp, win, currentLevel)
+- [ ] Leaderboard name entry flow — input handling regressions
+- [ ] Sound synthesis — Web Audio API context state on first interaction
+- [ ] Dive/bite state machine edge cases (dive while biting, level transition mid-dive)
+- [ ] Score popup — lifecycle/destroy on rapid eat sequences
+
+**Next step:** Run the game, capture all console errors and failing test cases, document here before any new development.
+
+---
+
+## 19. Development Phases
 
 ### Phase 1 (COMPLETE)
-- Basic gameplay loop with placeholder colored shapes at 800x600
-- Functional but not visually authentic
+Basic gameplay loop with placeholder colored shapes at 800x600.
 
-### Phase 2 (CURRENT - v3.0)
-**Focus:** Retro rendering pipeline + bug fixes + modular architecture
+### Phase 2 (COMPLETE — Cycles A–F)
+Retro rendering pipeline, all gameplay systems, polish.
 
-**Step 1: Foundation (Retro Rendering Pipeline)**
-1. Set up 320x180 canvas with 4x nearest-neighbor zoom
-2. Create `constants.js` with PICO-8 palette, 16px tile size, grid dimensions
-3. Delete all dead code (see Section 10)
-
-**Step 2: Bug Fixes**
-4. Fix gator movement bounds (allow full play area including lily pads)
-5. Fix frog movement bounds (allow reaching lily pad zone)
-6. Replace all hardcoded delta time with Phaser's `delta` parameter
-7. Fix grid-snap overwriting log riding state
-
-**Step 3: Modular Architecture**
-8. Create `BootScene.js` for asset loading
-9. Break monolithic `FroggerScene` into separate entity classes (Gator, Frog, Log, LilyPad)
-10. Create manager classes (LogColumnManager, FrogSpawner, CollisionSystem)
-11. Create `HUD.js` for UI rendering
-12. Create `GameOverScene.js` for end states
-
-**Step 4: Visual Polish**
-13. Replace all arbitrary hex colors with PICO-8 palette constants
-14. Replace Arial text with bitmap pixel font
-15. Load and integrate sprite assets (16x16)
-16. Reconcile log column count (15), speeds (8-20 px/sec), gaps (16-64px)
-
-**Step 5: Validation**
-17. Test all win/lose conditions end-to-end
-18. Verify retro consistency (no mixed resolutions, no system fonts, no smooth gradients)
-19. Build and run locally
+| Cycle | Status | Key Deliverables |
+|-------|--------|-----------------|
+| A — Foundation Stability | Complete | Smooth movement, title screen, game over screens |
+| B — Score & Frog Types | Complete | Point economy, 5 frog types, basic leaderboard |
+| C — Health Power-Ups & Frog AI | Complete | HP pickups, smart frog crossing, log riding |
+| D — Level System | Complete | Levels 1-4+, difficulty ramp, score accumulation |
+| E — Core Mechanics Overhaul | Complete | Bank entry, dive mode, bite attacks |
+| F — Polish & Feel | Complete (QA errors) | Score popups, arcade leaderboard, sounds, pad feedback |
 
 ### Phase 3 (FUTURE)
-- CRT shader (scanlines, curvature, bloom) - optional retro polish
-- Audio (hop, eat, die, music)
-- Sprite animations (2-3 frames per entity, hand-edited)
-- Difficulty scaling (waves/levels)
+- CRT shader (scanlines, curvature, bloom)
+- Sprite animations (2-3 frames per entity)
 - Mobile touch controls
+- Difficulty power-ups (extra bites from pickups)
+- Entry timing bonus (score reward for aggressive entry)
 
 ---
 
-## 13. Testing Checklist (Phase 2 v3.0)
+## 20. Testing Checklist
 
-### Retro Rendering (NEW - TOP PRIORITY)
+### Retro Rendering
 - [ ] Game renders at 320x180 internal resolution
 - [ ] Upscaled 4x to 1280x720 via nearest-neighbor
 - [ ] All pixels are crisp, hard-edged (no blur/smoothing)
 - [ ] All entities use 16x16 tile grid
 - [ ] Only PICO-8 palette colors visible in game
 - [ ] No system fonts rendered (bitmap font only)
-- [ ] No smooth gradients or anti-aliased edges
 
-### Bug Fixes
-- [ ] Gator can reach lily pad zone (col 1)
-- [ ] Frogs can reach lily pad zone (col 1)
-- [ ] Log movement uses delta time (not hardcoded 0.016)
-- [ ] Frog decision timer uses delta time (not hardcoded 16)
-- [ ] Frogs visually ride logs (y position tracks log)
-- [ ] Win condition (eat 10 frogs) triggers correctly
-- [ ] Lose condition (HP = 0) triggers correctly
-- [ ] Lose condition (5 pads filled) triggers correctly
+### Core Gameplay
+- [ ] Gator slides smoothly between tiles (80ms tween, no teleporting)
+- [ ] Holding arrow key moves gator continuously
+- [ ] Gator sprite faces left when moving left, right when moving right
+- [ ] Gator starts on bank (col 0) each level
+- [ ] Gator enters river on directional input toward river
+- [ ] Splash visual plays on entry
+- [ ] Gator cannot return to col 0 or reach col 1 after entry
+- [ ] Gator takes -1 HP from log collision (500ms cooldown, surfaced only)
+- [ ] Gator eats frogs on overlap (surfaced)
+- [ ] Frogs can reach lily pad zone (col 1) — Bug 1 fixed
+- [ ] All 5 pads can fill — lose condition can trigger
 
-### Gameplay
-- [ ] Gator moves in 4 directions, 16px per keypress
-- [ ] Gator takes damage from log collision (HP -1)
-- [ ] Damage cooldown prevents multi-hit (500ms)
-- [ ] Gator eats frogs on overlap
-- [ ] Frogs spawn from right bank every 1.5-2.25s
-- [ ] Frogs hop in grid (UP/DOWN/LEFT only)
-- [ ] Frogs ride logs vertically
-- [ ] Frogs fill lily pads when reaching col 1
-- [ ] 15 log columns moving alternating UP/DOWN
-- [ ] Restart works (R key)
+### Dive Mode
+- [ ] Hold Space → gator dives (surface objects fade to ~40% alpha)
+- [ ] Gator moves freely while diving
+- [ ] Logs do not damage diving gator
+- [ ] Frogs do not react to diving gator
+- [ ] Breath meter depletes while diving
+- [ ] Breath runs out → automatic surface
+- [ ] Breath refills slowly on surface (not instant)
+- [ ] Surface on frog → frog eaten, gator exposed
+- [ ] Surface on log → -1 HP
+- [ ] Cannot bite while diving
 
-### Architecture
-- [ ] No dead code files remain (player.js, car.js, old config.js, etc.)
-- [ ] Entities are separate classes (Gator, Frog, Log, LilyPad)
-- [ ] Managers handle spawning/updates (LogColumnManager, FrogSpawner)
-- [ ] HUD is separate from game scene
-- [ ] All constants in constants.js (no magic numbers in scene code)
+### Bite System
+- [ ] Shift held shows bite-armed visual indicator
+- [ ] Shift + direction bites adjacent tile
+- [ ] Bite on log: log destroyed, -1 bite, +100 pts
+- [ ] Bite on frog-on-log: frog eaten, log destroyed, -1 bite, +frog pts + 100
+- [ ] Bite on swimming frog: frog eaten, -1 bite, +frog pts
+- [ ] Bite on empty: -1 bite, 0 pts
+- [ ] Bite count at 0: nothing happens
+- [ ] Bites reset to 3 on level clear
 
-### Performance
+### Frog System
+- [ ] 5 frog types spawn with correct color and spawn weight
+- [ ] Frogs prefer logs (wait for log before jumping)
+- [ ] Frogs ride logs vertically (y tracks log y)
+- [ ] Some frogs fall into water (smartness < 1.0)
+- [ ] Frogs in water can be eaten by gator
+- [ ] Frogs reach col 1 → pad filled, frog despawns
+
+### Score System
+- [ ] Live score in HUD updates on each event
+- [ ] Each frog type awards correct points on eat
+- [ ] Frog reaching pad subtracts 300
+- [ ] Win bonus +1000 added on level clear
+- [ ] Time remaining bonus +10/sec added on level clear
+- [ ] Score accumulates across levels (does NOT reset)
+- [ ] Restart resets score to 0
+- [ ] Score popup appears and fades on frog eat
+- [ ] Popup color matches frog type
+
+### Level System
+- [ ] HUD shows current level number
+- [ ] Eating 10 frogs triggers level clear screen
+- [ ] Level clear shows score, auto-proceeds in ~2s
+- [ ] Level 2+ is harder than level 1 (more/faster logs)
+- [ ] Level 4+ parameters stay at max difficulty
+- [ ] HP/pads/frogs/timer/gator reset on level start
+- [ ] Score does not reset on level start
+
+### Health Power-Ups
+- [ ] ~3 power-ups appear per 60s level
+- [ ] Power-up visible ~8s before despawn
+- [ ] Collecting power-up: +1 HP, capped at 3
+- [ ] Power-up does not spawn on log or lily pad
+- [ ] Visual feedback on collect
+
+### Polish (Cycle F)
+- [ ] Pad fill triggers: -300 score, pad fill sound, red edge flash (~300ms), pad pulse
+- [ ] Frog eat sound plays on every eat
+- [ ] Log damage sound plays on every hit
+- [ ] Level clear sound plays on level transition
+- [ ] Game over sound plays on game over screen
+- [ ] All 5 sounds synthesized via Web Audio API (no audio files)
+
+### End Game Flow
+- [ ] Game over → stats screen → leaderboard screen
+- [ ] Leaderboard shows top 5 (rank, name, score, level)
+- [ ] If player makes top 5: name input is active
+- [ ] Name entry: 3 chars, A-Z, navigated with arrow keys
+- [ ] Leaderboard persists after page reload (localStorage)
+- [ ] Press any key from leaderboard → title screen
+
+### Stability
+- [ ] No crashes during full session
+- [ ] No crashes during level transitions
+- [ ] No crashes during state transitions (dive/bite/surface edge cases)
+- [ ] No console errors
 - [ ] 60 FPS on standard devices
-- [ ] No lag with 6-8 active frogs
-- [ ] No memory leaks (frogs properly destroyed on eat/despawn)
+- [ ] No memory leaks (frogs, popups, pickups properly destroyed)
 
 ---
 
-## 14. Success Criteria (Phase 2 v3.0)
-
-**Game is "ready" when:**
-- All retro rendering constraints are met (320x180, 4x, PICO-8 palette, pixel font)
-- All 4 critical bugs are fixed
-- Dead code is removed
-- Modular architecture is in place
-- All win/lose conditions work end-to-end
-- Game plays smoothly at 60 FPS
-- No console errors
-- Built and runs locally via webpack
-
----
-
-## 15. Technical Notes
+## 21. Technical Notes
 
 ### Delta Time (CRITICAL)
 ```javascript
@@ -501,43 +821,58 @@ gridRow = Math.floor(pixelY / 16);
 ### Lily Pad Collision (Fixed)
 ```javascript
 // Frog reaches lily pad when gridCol <= 1 (lily pad zone)
-// NOT when x < 100 (old broken check)
 if (frog.gridCol <= 1) {
-  // Find nearest unfilled pad
   const pad = this.lilyPads.find(p => !p.filled && Math.abs(p.gridRow - frog.gridRow) <= 1);
   if (pad) {
     pad.filled = true;
     this.gameState.padsFilled++;
+    this.score -= 300;
+    this.triggerPadFillFeedback();
     frog.destroy();
   }
 }
 ```
 
----
+### Gator Entry Confinement
+```javascript
+// Before entry (bank state):
+gator.bounds = { minCol: 0, maxCol: 0, minRow: 1, maxRow: 10 };
 
-## 16. Reconciliation Notes
+// After entry (river state):
+gator.bounds = { minCol: 2, maxCol: 16, minRow: 1, maxRow: 10 };
+// col 0 (bank) and col 1 (lily pad zone) are off-limits once entered
+```
 
-Values that differed between PRD v2.0, LOG_LAYOUT_SPEC.md, and code — now resolved:
-
-| Parameter | PRD v2 | LOG_LAYOUT_SPEC | Old Code | **v3 (Final)** |
-|-----------|--------|-----------------|----------|----------------|
-| Canvas size | 800x600 | 800x600 | 800x600 | **320x180** |
-| Tile size | 32px | 32px | 32px | **16px** |
-| Log columns | 12 | 15 | 15 | **15** |
-| Log width | 80px | 20px | 20px | **10px** |
-| Log height range | — | 2-6 units | 2-4 units | **2-4 tiles (32-64px)** |
-| Log speed | 80-150 px/sec | — | 16-30 px/sec | **8-20 px/sec** |
-| Vertical gaps | — | 0-192px | 96-256px | **16-64px (1-4 tiles)** |
-| Max frogs | 5-6 | 6-10 | 6-10 | **6-8** |
-| Frog size | 24x24 / 32x32 | 24x24 | 24x24 | **16x16** |
-| Gator size | 32x32 | — | 32x32 | **16x16** |
-| Lily pad X | x=48 | x=40 | x=48 | **col 1 (x=24 center)** |
-| Spawn X | x=760 | x=560 | x=576 | **col 17 (x=280 center)** |
-| Font | Arial 20px | — | Arial 20px | **Bitmap pixel font** |
+### Breath Meter
+```javascript
+// Breath is a value 0.0–1.0
+// Depletes at BREATH_DRAIN_RATE per second while diving
+// Refills at BREATH_REFILL_RATE per second while surfaced
+// Auto-surface when breath <= 0
+```
 
 ---
 
-**Document Version:** 3.0
-**Last Updated:** 2026-03-11
-**Author:** Review Agent
-**Status:** Ready for Implementation
+## 22. Reconciliation Notes
+
+| Parameter | PRD v2 | PRD v3.0 | **v3.1 (Final)** |
+|-----------|--------|----------|-----------------|
+| Canvas size | 800x600 | 320x180 | **320x180** |
+| Tile size | 32px | 16px | **16px** |
+| Log columns | 12 | 15 | **15** |
+| Win condition | Eat 10 frogs (single game) | Eat 10 frogs | **Eat 10 frogs per level (infinite levels)** |
+| Gator start | Col 10, row 9 (river) | Col 10, row 9 (river) | **Col 0 (bank) — enters river by choice** |
+| Gator bounds | River only | Full play area | **Bank (pre-entry) or river cols 2-16 (post-entry)** |
+| Frogs | Single type | Single type | **5 types with spawn weights** |
+| Score | Placeholder (200/frog) | None defined | **Full point economy (200-2000 per type)** |
+| Levels | None | None | **Infinite levels, params cap at level 4** |
+| Dive | None | None | **Space key, breath meter, frog/log immunity** |
+| Bite | None | None | **Shift+direction, 3/level, +100 log break** |
+| Game end flow | Win/Lose screens | Win/Lose screens | **Stats → Arcade leaderboard with name entry** |
+| Sound | None | None | **5 Web Audio API synthesized sounds** |
+
+---
+
+**Document Version:** 3.1
+**Last Updated:** 2026-04-11
+**Status:** Cycles A–F complete, QA errors unresolved — see Section 18

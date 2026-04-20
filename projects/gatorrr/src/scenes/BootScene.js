@@ -14,7 +14,13 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('gator', 'assets/gator.png');
 
     this.load.on('complete', () => {
-      this.scene.start('TitleScene');
+      // Wait for Press Start 2P to be available before showing UI
+      document.fonts.load("10px 'Press Start 2P'").then(() => {
+        this.scene.start('TitleScene');
+      }).catch(() => {
+        // Font unavailable (offline) — proceed anyway with monospace fallback
+        this.scene.start('TitleScene');
+      });
     });
   }
 

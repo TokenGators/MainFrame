@@ -7,7 +7,7 @@ import CollisionSystem from '../managers/CollisionSystem.js';
 import LilyPad from '../entities/LilyPad.js';
 import PowerUp from '../entities/PowerUp.js';
 import DevPanel from '../ui/DevPanel.js';
-import SoundManager from '../audio/SoundManager.js';
+import { getSoundManager } from '../audio/SoundManager.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -48,7 +48,7 @@ export default class GameScene extends Phaser.Scene {
     this.hud = null;
     this.powerUp = null;
     this.powerUpTimer = null;
-    this.sound = null;
+    this.soundMgr = null;
     this.padFlash = null;
     this.devPanelOpen = false;
     this.splash = null;
@@ -72,8 +72,8 @@ export default class GameScene extends Phaser.Scene {
     this.createLilyPads();
     this.createHUD();
 
-      // Initialize sound manager
-    this.sound = new SoundManager();
+      // Initialize sound manager (singleton — avoids shadowing Phaser's this.sound)
+    this.soundMgr = getSoundManager();
 
       // Initialize pad flash overlay
     this.padFlash = this.add.rectangle(
@@ -84,10 +84,10 @@ export default class GameScene extends Phaser.Scene {
 
       // Resume audio context on first keypress
     this.input.keyboard.once('keydown', () => {
-      if (this.sound.ctx.state === 'suspended') {
-        this.sound.ctx.resume();
-         }
-        });
+      if (this.soundMgr.ctx.state === 'suspended') {
+        this.soundMgr.ctx.resume();
+      }
+    });
 
       // Countdown timer — fires every second
     this.time.addEvent({
@@ -166,21 +166,76 @@ export default class GameScene extends Phaser.Scene {
     }
 
   createBackground() {
-      // Left bank (col 0): rectangle(0,0,TILE,CANVAS_HEIGHT, 0x008751) depth -1
-    this.add.rectangle(0, 0, TILE, CANVAS_HEIGHT, 0x008751).setOrigin(0).setDepth(-1);
-    
-      // Lily zone (col 1): rectangle(TILE,0,TILE,CANVAS_HEIGHT, 0x00A860) depth -1
+    // Left bank (col 0)
+    this.add.rectangle(0, 0, TILE, CANVAS_HEIGHT, C.DARK_GREEN).setOrigin(0).setDepth(-1);
+
+    // Lily zone (col 1): slightly brighter green strip
     this.add.rectangle(TILE, 0, TILE, CANVAS_HEIGHT, 0x00A860).setOrigin(0).setDepth(-1);
-    
-      // River (cols 2-16): rectangle(TILE*2,0,TILE*15,CANVAS_HEIGHT, 0x1D2B53) depth -1
-    this.add.rectangle(TILE*2, 0, TILE*15, CANVAS_HEIGHT, 0x1D2B53).setOrigin(0).setDepth(-1);
-    
-      // Right bank (cols 17-19): rectangle(TILE*17,0,TILE*3,CANVAS_HEIGHT, 0x008751) depth -1
-    this.add.rectangle(TILE*17, 0, TILE*3, CANVAS_HEIGHT, 0x008751).setOrigin(0).setDepth(-1);
-    
-      // HUD bar: rectangle(0,0,CANVAS_WIDTH,16, 0x000000) depth 9
-    this.add.rectangle(0, 0, CANVAS_WIDTH, 16, 0x000000).setOrigin(0).setDepth(9);
+
+    // River (cols 2-16)
+    this.add.rectangle(TILE * 2, 0, TILE * 15, CANVAS_HEIGHT, C.DARK_BLUE).setOrigin(0).setDepth(-1);
+
+    // Right bank (cols 17-19)
+    this.add.rectangle(TILE * 17, 0, TILE * 3, CANVAS_HEIGHT, C.DARK_GREEN).setOrigin(0).setDepth(-1);
+
+    // HUD bar
+    this.add.rectangle(0, 0, CANVAS_WIDTH, 16, C.BLACK).setOrigin(0).setDepth(9);
+
+    // Bank decorations
+    this._addBankDecor();
+  }
+
+  _addBankDecor() {
+    // Mud/dirt strips at the water edges
+    // Left bank right edge (water interface)
+    this.add.rectangle(TILE - 3, 16, 3, CANVAS_HEIGHT - 16, C.DARK_GRAY)
+      .setOrigin(0, 0).setDepth(-0.5);
+    // Right bank left edge (water interface)
+    this.add.rectangle(TILE * 17, 16, 3, CANVAS_HEIGHT - 16, C.DARK_GRAY)
+      .setOrigin(0, 0).setDepth(-0.5);
+
+    // Grass tufts along the water edges — small bright-green blades
+    const tufts = [];
+    const tuffStartY = 20; // below HUD
+    const tuffSpacing = 14;
+    const numTufts = Math.floor((CANVAS_HEIGHT - tuffStartY) / tuffSpacing);
+
+    for (let i = 0; i < numTufts; i++) {
+      const ty = tuffStartY + i * tuffSpacing + Math.floor(Math.random() * 6);
+
+      // Left bank tuft (near the mud edge)
+      const lx = TILE - 6 - Math.floor(Math.random() * 5);
+      const lt = this.add.rectangle(lx, ty, 2, 4 + Math.floor(Math.random() * 4), C.GREEN)
+        .setOrigin(0.5, 1).setDepth(-0.4);
+
+      // Companion blade 2px to the right
+      const lt2 = this.add.rectangle(lx + 3, ty - 1, 2, 3 + Math.floor(Math.random() * 3), C.GREEN)
+        .setOrigin(0.5, 1).setDepth(-0.4);
+
+      // Right bank tuft (near the mud edge)
+      const rx = TILE * 17 + 5 + Math.floor(Math.random() * 5);
+      const rt = this.add.rectangle(rx, ty, 2, 4 + Math.floor(Math.random() * 4), C.GREEN)
+        .setOrigin(0.5, 1).setDepth(-0.4);
+      const rt2 = this.add.rectangle(rx + 3, ty - 1, 2, 3 + Math.floor(Math.random() * 3), C.GREEN)
+        .setOrigin(0.5, 1).setDepth(-0.4);
+
+      tufts.push(lt, lt2, rt, rt2);
     }
+
+    // Gentle sway animation — each tuft pair oscillates ±1px horizontally
+    // Stagger delays so they don't all move in unison
+    tufts.forEach((t, idx) => {
+      this.tweens.add({
+        targets: t,
+        x: t.x + (idx % 2 === 0 ? 1 : -1),
+        duration: 700 + (idx % 7) * 80,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: (idx % 11) * 60,
+      });
+    });
+  }
 
   createLilyPads() {
     for (const pos of this.getLilyPadPositions()) {
@@ -338,7 +393,7 @@ export default class GameScene extends Phaser.Scene {
                 this.gameState.score += frog.type === 'green' ? 200 : frog.type === 'blue' ? 500 : frog.type === 'red' ? 1500 : 2000;
                 this.gameState.frogsEaten++;
                   // Play eat sound
-                this.sound?.play?.('eat');
+                this.soundMgr?.play?.('eat');
                 break;
                   }
                 }
@@ -452,16 +507,15 @@ export default class GameScene extends Phaser.Scene {
   updateTimer() {
     if (!this.gameState.gameOver) {
       this.gameState.timeLeft -= 1000;
-          // Score increases by 1 per second as time passes (time bonus tracking)
-      this.gameState.timeBonus += 1;
 
       if (this.gameState.timeLeft <= 0) {
         this.gameState.timeLeft = 0;
         this.gameState.gameOver = true;
+        this.saveToLeaderboard();
         this.scene.start('GameOverScene', { gameState: this.gameState });
-          }
-        }
+      }
     }
+  }
 
   triggerPadFlash() {
       // Screen edge red flash on pad fill

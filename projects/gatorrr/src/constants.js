@@ -47,6 +47,8 @@ export const NUM_LOG_COLUMNS = 15;
 // Gameplay
 export const GATOR_START = { col: 0, row: 5 };
 export const GATOR_START_COL = 0;
+export const GATOR_MIN_ROW = 1;
+export const GATOR_MAX_ROW = 10;
 export const RIVER_MIN_COL = 2;
 export const RIVER_MAX_COL = 16;
 export const MAX_HP = 3;
@@ -128,7 +130,7 @@ export const LEVEL_CONFIGS = [
 ];
 
 // Dev Mode (E1)
-export const DEV_MODE = true; // Set to false before any public build
+export const DEV_MODE = false;
 
 // Polish & Feel Constants (F1-F4)
 export const POPUP_FLOAT_DISTANCE = 40; // px upward

@@ -88,14 +88,16 @@ export default class Frog extends Phaser.GameObjects.Sprite {
   decideOnBank(logs) {
     // Check if a log in col 16 overlaps with this frog's row (centered origin)
     const frogCenter = this.y;
-    const logOverlapY = (log) => 
+    const logOverlapY = (log) =>
       log.y <= frogCenter + TILE * 0.5 && log.y + log.height >= frogCenter - TILE * 0.5;
-    
+
     for (const log of logs) {
       if (log.gridCol === 16 && logOverlapY(log)) {
-        // Found a log to jump onto
+        // Found a log to jump onto — snap gridCol/x so decideOnLog targets correctly
         this.state = 'ON_LOG';
         this.currentLog = log;
+        this.gridCol = 16;
+        this.x = 16 * TILE + TILE / 2;
         this.logOffset = this.y - log.y;
         return;
       }

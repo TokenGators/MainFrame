@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE } from '../constants.js';
-import SoundManager from '../audio/SoundManager.js';
+import { getSoundManager } from '../audio/SoundManager.js';
 
 export default class LevelClearScene extends Phaser.Scene {
   constructor() {
@@ -40,12 +40,9 @@ export default class LevelClearScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    // Play level clear sound
-    this.sound = new SoundManager();
-    if (this.sound.ctx.state === 'suspended') {
-      this.sound.ctx.resume();
-    }
-    this.sound.play('levelClear');
+    // Play level clear sound (singleton — no new AudioContext created)
+    const sound = getSoundManager();
+    sound.ctx.resume().then(() => sound.play('levelClear'));
 
     // Auto-advance to next level after 2 seconds
     this.time.delayedCall(2000, () => {

@@ -119,7 +119,7 @@ export default class Gator extends Phaser.GameObjects.Sprite {
         this.clearTint();
        });
        // Play damage sound
-      this.scene.sound?.play?.('damage');
+      this.scene.soundMgr?.play?.('damage');
      }
    }
 
