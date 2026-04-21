@@ -490,11 +490,16 @@ export function HoldersExplorer() {
           </StatGroup>
 
           <StatGroup label="Holders">
-            <Stat label="Wallets" value={stats.total} />
-            {stats.uniquePersons > 0 && stats.uniquePersons !== stats.total && (
-              <Stat label="Persons" value={stats.uniquePersons} />
+            <Stat label="Wallets" value={stats.stillHolding} />
+            {stats.currentPersons > 0 && stats.currentPersons !== stats.stillHolding && (
+              <Stat label="Persons" value={stats.currentPersons} />
             )}
-            <Stat label="Holding" value={stats.stillHolding} />
+          </StatGroup>
+
+          <StatGroup label="New Holders">
+            <Stat label="7d"  value={stats.newWallets7d}  sub={`${stats.newPersons7d} ppl`}  accent />
+            <Stat label="30d" value={stats.newWallets30d} sub={`${stats.newPersons30d} ppl`} />
+            <Stat label="90d" value={stats.newWallets90d} sub={`${stats.newPersons90d} ppl`} />
           </StatGroup>
 
           <StatGroup label="Origin">

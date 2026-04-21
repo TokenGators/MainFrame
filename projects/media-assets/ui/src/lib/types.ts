@@ -136,18 +136,22 @@ export interface Holder {
 }
 
 export interface HolderStats {
-  total: number;
   stillHolding: number;
+  currentPersons: number;
   minters: number;
   presaleCount: number;
   withEns: number;
   totalTokens: number;
   onEth: number;
   onApe: number;
-  identified: number;
   identifiedCurrent: number;
   currentHoldersTotal: number;
-  uniquePersons: number;
+  newWallets7d: number;
+  newWallets30d: number;
+  newWallets90d: number;
+  newPersons7d: number;
+  newPersons30d: number;
+  newPersons90d: number;
 }
 
 export interface HolderFilters {
@@ -213,6 +217,58 @@ export interface CollectorProfile extends Holder {
     count:   number;
     samples: { id: string; text: string; created_at: string; post_type?: string }[];
   };
+}
+
+export interface MarketNftThumb {
+  token_id: number;
+  name: string;
+  gateway_image_url: string | null;
+  rarity_rank: number | null;
+}
+
+export interface MarketListing {
+  token_id: number;
+  chain: 'eth' | 'ape';
+  lister: string;
+  price_native: number;
+  price_currency: 'ETH' | 'APE';
+  marketplace: string;
+  listed_at: string | null;
+  expires_at: string | null;
+  seen_at: string;
+  order_hash: string;
+  nft: MarketNftThumb;
+  lister_summary: { wallet: string; name: string | null } | null;
+}
+
+export interface MarketSale {
+  token_id: number;
+  chain: 'eth' | 'ape';
+  price_native: number | null;
+  price_currency: string | null;
+  marketplace: string | null;
+  timestamp: string;
+  tx_hash: string;
+  explorer_url: string;
+  from: string;
+  to: string;
+  from_name: string | null;
+  to_name: string | null;
+  nft: MarketNftThumb;
+}
+
+export interface MarketResponse {
+  summary: {
+    active_total: number;
+    active_after_filter: number;
+    eth_listed: number;
+    ape_listed: number;
+    spam_suppressed_tokens: number;
+    floor_eth: number | null;
+    floor_ape: number | null;
+  };
+  listings: MarketListing[];
+  sales: MarketSale[];
 }
 
 export interface NftHolderSummary {

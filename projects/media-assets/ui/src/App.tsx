@@ -7,6 +7,7 @@ import { NFTDetailPage } from './pages/NFTDetailPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { HoldersPage } from './pages/HoldersPage';
 import { CollectorPage } from './pages/CollectorPage';
+import { MarketPage } from './pages/MarketPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/nfts"    element={<NFTPage />} />
               <Route path="/nfts/:token_id" element={<NFTDetailPage />} />
               <Route path="/holders" element={<HoldersPage />} />
+              <Route path="/market"  element={<MarketPage />} />
               <Route path="/collectors/:wallet" element={<CollectorPage />} />
               <Route path="/review"  element={<ReviewPage />} />
               <Route path="*"        element={<Navigate to="/" replace />} />

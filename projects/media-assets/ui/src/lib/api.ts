@@ -105,6 +105,9 @@ export const api = {
     },
     stats: () => request<{ total: number; mints: number; transfers: number; bridgeOut: number; bridgeIn: number; latest: string | null }>('/activity/stats'),
   },
+  market: {
+    get: () => request<import('./types').MarketResponse>('/market'),
+  },
   sync: {
     start: () => request<{ status: string; startedAt: string }>('/sync', { method: 'POST' }),
     status: () => request<{

@@ -60,8 +60,13 @@ $PYTHON scripts/enrich-ens.py 2>&1 | tee -a "$LOG"
 
 # ── 6. Enrich OpenSea profiles (incremental — only new wallets) ──────────────
 echo "" | tee -a "$LOG"
-echo "[6/6] Enriching OpenSea profiles (new wallets only)..." | tee -a "$LOG"
+echo "[6/7] Enriching OpenSea profiles (new wallets only)..." | tee -a "$LOG"
 $PYTHON scripts/enrich-opensea.py 2>&1 | tee -a "$LOG"
+
+# ── 7. Sync active listings (ETH + APE via OpenSea API) ──────────────────────
+echo "" | tee -a "$LOG"
+echo "[7/7] Syncing active listings (OpenSea)..." | tee -a "$LOG"
+$PYTHON scripts/sync-listings.py 2>&1 | tee -a "$LOG" || echo "(listings sync failed — continuing)" | tee -a "$LOG"
 
 echo "" | tee -a "$LOG"
 echo "✓ Pipeline complete — $(date -u '+%Y-%m-%dT%H:%M:%SZ')" | tee -a "$LOG"

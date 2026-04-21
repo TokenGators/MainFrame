@@ -4,6 +4,7 @@ const NAV_LINKS = [
   { to: '/',        label: 'BROWSE'   },
   { to: '/nfts',    label: 'NFTS'     },
   { to: '/holders', label: 'HOLDERS'  },
+  { to: '/market',  label: 'MARKET'   },
   { to: '/review',  label: 'REVIEW'   },
 ];
 

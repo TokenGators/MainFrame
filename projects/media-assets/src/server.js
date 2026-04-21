@@ -25,6 +25,7 @@ app.use('/api/status', require('./routes/status'));
 app.use('/api/ingest', require('./routes/ingest'));
 app.use('/api/activity', require('./routes/activity'));
 app.use('/api/sync',     require('./routes/sync'));
+app.use('/api/market',   require('./routes/market'));
 
 // Serve ingested media files
 app.use('/media', express.static(path.join(__dirname, '../database/media')));

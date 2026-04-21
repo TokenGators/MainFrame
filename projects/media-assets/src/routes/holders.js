@@ -385,42 +385,85 @@ router.get('/', (req, res) => {
 
 // GET /api/holders/stats — summary stats for the dashboard header
 router.get('/stats', (req, res) => {
-  const total         = holders.length;
-  const stillHolding  = holders.filter(h => h.still_holding).length;
-  const minters       = holders.filter(h => h.minted_tokens?.length > 0).length;
-  const withEns       = holders.filter(h => h.ens).length;
-  const totalTokens   = holders.reduce((s, h) => s + (h.current_tokens?.length ?? 0), 0);
-  const onEth         = holders.reduce((s, h) =>
+  const now = Date.now();
+  const day = 86400 * 1000;
+  const cutoff7  = now - 7  * day;
+  const cutoff30 = now - 30 * day;
+  const cutoff90 = now - 90 * day;
+
+  const currentHolders = holders.filter(h => h.still_holding);
+  const stillHolding   = currentHolders.length;
+  const minters        = holders.filter(h => h.minted_tokens?.length > 0).length;
+  const withEns        = holders.filter(h => h.ens).length;
+  const totalTokens    = holders.reduce((s, h) => s + (h.current_tokens?.length ?? 0), 0);
+  const onEth          = holders.reduce((s, h) =>
     s + Object.values(h.current_chain_by_token || {}).filter(c => c === 'eth').length, 0);
-  const onApe         = holders.reduce((s, h) =>
+  const onApe          = holders.reduce((s, h) =>
     s + Object.values(h.current_chain_by_token || {}).filter(c => c === 'ape').length, 0);
 
-  // Presale count
-  const presaleCount = holders.filter(h => identityMap[h.wallet?.toLowerCase()]?.presale).length;
+  // Presale count (only among current holders)
+  const presaleCount = currentHolders.filter(h =>
+    identityMap[h.wallet?.toLowerCase()]?.presale).length;
 
-  // All wallets with any identity signal
-  const identified = holders.filter(h => {
-    const id = identityMap[h.wallet?.toLowerCase()] || {};
-    return !!(h.ens || id.twitter || id.discord || id.opensea_username ||
-              id.farcaster_username || id.name);
-  }).length;
-
-  // Current holders (still holding) with any identity signal
-  const currentHolders = holders.filter(h => h.still_holding);
+  // Identity-resolved current holders
   const identifiedCurrent = currentHolders.filter(h => {
     const id = identityMap[h.wallet?.toLowerCase()] || {};
     return !!(h.ens || id.twitter || id.discord || id.opensea_username ||
               id.farcaster_username || id.name);
   }).length;
 
-  // Count unique persons: distinct clusters + unclustered wallets
-  const clusteredWallets = new Set(Object.keys(clusterMap));
-  const clusterIds = new Set(Object.values(clusterMap).map(c => c.cluster_id));
-  const unclusteredCount = holders.filter(h => !clusteredWallets.has(h.wallet?.toLowerCase())).length;
-  const uniquePersons = clusterIds.size + unclusteredCount;
+  // ── Persons currently holding ──
+  // A "person" is either a cluster (counted once) or an unclustered holding wallet.
+  const holdingWalletsLc = new Set(currentHolders.map(h => h.wallet?.toLowerCase()));
+  const holdingClusterIds = new Set();
+  let unclusteredHolding = 0;
+  for (const h of currentHolders) {
+    const cl = clusterMap[h.wallet?.toLowerCase()];
+    if (cl) holdingClusterIds.add(cl.cluster_id);
+    else unclusteredHolding++;
+  }
+  const currentPersons = holdingClusterIds.size + unclusteredHolding;
 
-  res.json({ total, stillHolding, minters, presaleCount, withEns, totalTokens, onEth, onApe,
-             identified, identifiedCurrent, currentHoldersTotal: currentHolders.length, uniquePersons });
+  // ── New holders over 7d / 30d / 90d ──
+  // New = first_acquired within window AND still currently holding.
+  function countNewWallets(cutoff) {
+    return currentHolders.filter(h => {
+      const t = h.first_acquired ? new Date(h.first_acquired).getTime() : 0;
+      return t >= cutoff;
+    }).length;
+  }
+
+  function countNewPersons(cutoff) {
+    const seenClusters = new Set();
+    let loners = 0;
+    for (const h of currentHolders) {
+      const t = h.first_acquired ? new Date(h.first_acquired).getTime() : 0;
+      if (t < cutoff) continue;
+      const cl = clusterMap[h.wallet?.toLowerCase()];
+      if (cl) seenClusters.add(cl.cluster_id);
+      else loners++;
+    }
+    return seenClusters.size + loners;
+  }
+
+  res.json({
+    stillHolding,
+    currentPersons,
+    minters,
+    presaleCount,
+    withEns,
+    totalTokens,
+    onEth,
+    onApe,
+    identifiedCurrent,
+    currentHoldersTotal: stillHolding,
+    newWallets7d:  countNewWallets(cutoff7),
+    newWallets30d: countNewWallets(cutoff30),
+    newWallets90d: countNewWallets(cutoff90),
+    newPersons7d:  countNewPersons(cutoff7),
+    newPersons30d: countNewPersons(cutoff30),
+    newPersons90d: countNewPersons(cutoff90),
+  });
 });
 
 // GET /api/holders/:wallet — full detail for one wallet, including identity + sources
