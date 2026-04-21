@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { C, GATOR_START, MAX_HP, TILE, CANVAS_WIDTH, CANVAS_HEIGHT, LOG_SPEED_RAMP, FROG_SPAWN_RAMP, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC, POWERUP_SPAWN_INTERVAL, POWERUP_DURATION, POWERUP_HP_RESTORE, LEVEL_CONFIGS, DEV_MODE, DIVE_SURFACE_ALPHA, DIVE_BREATH_MAX, BITE_START_COUNT, BITE_LOG_BONUS, SCORE_LOG_BREAK, GATOR_MIN_ROW, GATOR_MAX_ROW, RIVER_MIN_COL, RIVER_MAX_COL } from '../constants.js';
+import bt, { C_WHITE, C_ORANGE, C_GREEN, C_GRAY, C_RED } from '../ui/bitmapText.js';
 import Gator from '../entities/Gator.js';
 import FrogSpawner from '../managers/FrogSpawner.js';
 import LogColumnManager from '../managers/LogColumnManager.js';
@@ -255,18 +256,18 @@ export default class GameScene extends Phaser.Scene {
     }
 
   createHUD() {
-    const style = { fontSize: '8px', fill: '#ffffff', fontFamily: 'monospace' };
+    const D = 10; // depth
     this.hud = {
-      levelText:  this.add.text(4,   2, 'LVL:1',     style).setDepth(10),
-      hpText:     this.add.text(50, 2, 'HP:',       style).setDepth(10),
-      scoreText:  this.add.text(100, 2, 'SCORE:0',  style).setDepth(10),
-      frogsText:  this.add.text(160, 2, 'FROGS:X/10', style).setDepth(10),
-      padsText:   this.add.text(230, 2, 'PADS:X/5',   style).setDepth(10),
-      timeText:   this.add.text(300, 2, 'T:XX',     style).setDepth(10),
-      biteText:   this.add.text(380, 2, 'BITES:3',  style).setDepth(10),
-      breathBar:  this.add.rectangle(40, 12, 30, 4, 0x29ADFF).setDepth(11).setOrigin(0, 0.5),
-      };
-    }
+      levelText: bt(this,   2, 2, 'LVL:1',      8, C_WHITE).setDepth(D),
+      hpText:    bt(this,  50, 2, 'HP:',         8, C_WHITE).setDepth(D),
+      scoreText: bt(this, 100, 2, 'SCORE:0',     8, C_WHITE).setDepth(D),
+      frogsText: bt(this, 200, 2, 'FROGS:0/10',  8, C_WHITE).setDepth(D),
+      padsText:  bt(this, 296, 2, 'PADS:0/5',    8, C_WHITE).setDepth(D),
+      timeText:  bt(this, 368, 2, 'T:60',        8, C_WHITE).setDepth(D),
+      biteText:  bt(this, 408, 2, 'BITES:3',     8, C_WHITE).setDepth(D),
+      breathBar: this.add.rectangle(50, 12, 30, 3, 0x29ADFF).setDepth(11).setOrigin(0, 0.5),
+    };
+  }
 
   playEntrySplash(x, y) {
       // Create splash effect - white rectangle that scales up and fades
@@ -440,11 +441,11 @@ export default class GameScene extends Phaser.Scene {
       // Update HUD
     if (this.hud) {
       this.hud.levelText.setText(`LVL:${this.currentLevel}`);
-      this.hud.hpText.setText(`HP: ${this.gameState.hp}/${MAX_HP}`);
+      this.hud.hpText.setText(`HP:${this.gameState.hp}/${MAX_HP}`);
       this.hud.scoreText.setText(`SCORE:${this.gameState.score}`);
-      this.hud.frogsText.setText(`Frogs: ${this.gameState.frogsEaten}/10`);
-      this.hud.padsText.setText(`Pads: ${this.gameState.padsFilled}/5`);
-      this.hud.timeText.setText(`Time: ${Math.ceil(this.gameState.timeLeft / 1000)}`);
+      this.hud.frogsText.setText(`FROGS:${this.gameState.frogsEaten}/10`);
+      this.hud.padsText.setText(`PADS:${this.gameState.padsFilled}/5`);
+      this.hud.timeText.setText(`T:${Math.ceil(this.gameState.timeLeft / 1000)}`);
       this.hud.biteText.setText(`BITES:${this.gator ? this.gator.bites : 0}`);
       
           // Update breath bar

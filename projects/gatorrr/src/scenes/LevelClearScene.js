@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE } from '../constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 import { getSoundManager } from '../audio/SoundManager.js';
+import bt, { C_WHITE, C_ORANGE, C_GREEN } from '../ui/bitmapText.js';
 
 export default class LevelClearScene extends Phaser.Scene {
   constructor() {
@@ -13,38 +14,18 @@ export default class LevelClearScene extends Phaser.Scene {
   }
 
   create() {
-    const centerX = CANVAS_WIDTH / 2;
-    const centerY = CANVAS_HEIGHT / 2;
+    const cx = CANVAS_WIDTH  / 2;
+    const cy = CANVAS_HEIGHT / 2;
 
-    // Background overlay (dimmed)
-    this.add.rectangle(centerX, centerY, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.7).setOrigin(0);
+    this.add.rectangle(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.8).setOrigin(0);
 
-    // Level clear heading
-    const levelText = `LEVEL ${this.level} CLEARED`;
-    this.add.text(centerX, centerY - 60, levelText, {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      fontStyle: 'bold',
-      color: '#00E436'
-    }).setOrigin(0.5);
+    bt(this, cx, cy - 60, `LEVEL ${this.level} CLEAR`, 16, C_GREEN).setOrigin(0.5);
+    bt(this, cx, cy - 24, `SCORE  ${this.score}`,       8, C_ORANGE).setOrigin(0.5);
+    bt(this, cx, cy + 20, `LEVEL ${this.level + 1} INCOMING...`, 8, C_WHITE).setOrigin(0.5);
 
-    // Current score display
-    this.add.text(centerX, centerY - 24, `Score: ${this.score}`, {
-      fontSize: '24px',
-      color: '#FFA300'
-    }).setOrigin(0.5);
-
-    // Next level hint
-    this.add.text(centerX, centerY + 20, `Get ready for Level ${this.level + 1}...`, {
-      fontSize: '16px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    // Play level clear sound (singleton — no new AudioContext created)
     const sound = getSoundManager();
     sound.ctx.resume().then(() => sound.play('levelClear'));
 
-    // Auto-advance to next level after 2 seconds
     this.time.delayedCall(2000, () => {
       this.scene.start('GameScene', { level: this.level + 1, score: this.score });
     });

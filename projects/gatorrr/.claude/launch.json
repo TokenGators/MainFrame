@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "gatorrr",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["webpack", "serve", "--mode", "development"],
       "port": 8081
     }
   ]

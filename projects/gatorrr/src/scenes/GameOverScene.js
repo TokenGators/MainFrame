@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, TILE, SCORE_WIN_BONUS, SCORE_TIME_BONUS_PER_SEC } from '../constants.js';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 import { getSoundManager } from '../audio/SoundManager.js';
+import bt, { C_WHITE, C_ORANGE, C_GREEN, C_GRAY, C_RED } from '../ui/bitmapText.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -12,68 +13,52 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create() {
-    const centerX = CANVAS_WIDTH / 2;
-    const centerY = CANVAS_HEIGHT / 2;
+    const cx    = CANVAS_WIDTH  / 2;
+    const cy    = CANVAS_HEIGHT / 2;
     const isWin = this.gameState.frogsEaten >= 10;
 
-    // Background overlay (dimmed)
-    this.add.rectangle(centerX, centerY, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.7).setOrigin(0);
+    this.add.rectangle(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.8).setOrigin(0);
 
-    // Determine state and display appropriate message
-    const loseHP = this.gameState.hp <= 0;
-    const losePads = this.gameState.padsFilled >= 5;
-
-    // Heading (win or game over)
+    // ── Heading ───────────────────────────────────────────────────────────
     const heading = isWin ? 'YOU WIN!' : 'GAME OVER';
-    this.add.text(centerX, centerY - 80, heading, {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      fontStyle: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    bt(this, cx, cy - 80, heading, 16, isWin ? C_GREEN : C_RED).setOrigin(0.5);
 
-    // Subheading for loss states
+    // ── Loss subheading ───────────────────────────────────────────────────
     if (!isWin) {
-      const subheading = loseHP ? 'The logs got you.' : 'The frogs won.';
-      this.add.text(centerX, centerY - 44, subheading, {
-        fontSize: '18px',
-        color: '#C2C3C7'
-      }).setOrigin(0.5);
+      const loseHP   = this.gameState.hp <= 0;
+      const sub      = loseHP ? 'THE LOGS GOT YOU.' : 'THE FROGS WON.';
+      bt(this, cx, cy - 52, sub, 8, C_GRAY).setOrigin(0.5);
     }
 
-    // Score breakdown display
-    const style = { fontSize: '14px', color: '#ffffff' };
+    // ── Score breakdown ───────────────────────────────────────────────────
+    const winBonus   = isWin ? (this.gameState.winBonus  || 0) : 0;
+    const timeBonus  = isWin ? (this.gameState.timeBonus || 0) : 0;
+    const padPenalty = this.gameState.padPenaltyTotal || 0;
+    const frogPts    = this.gameState.score - winBonus - timeBonus - padPenalty;
+    const total      = this.gameState.score;
 
-    // Calculate components
-    const winBonus = isWin ? this.gameState.winBonus : 0;
-    const timeBonus = isWin ? this.gameState.timeBonus : 0;
-    const totalFrogPoints = this.gameState.score - winBonus - timeBonus - (this.gameState.padPenaltyTotal || 0);
-    const totalScore = this.gameState.score;
+    let rowY = cy - 24;
+    const ROW = 14;
 
-    // Only show frog points if there were any (not just bonuses/penalties)
-    if (totalFrogPoints !== 0 || this.gameState.frogsEaten > 0) {
-      this.add.text(centerX, centerY - 12, `Frog points: +${totalFrogPoints}`, style).setOrigin(0.5);
+    if (frogPts !== 0 || this.gameState.frogsEaten > 0) {
+      bt(this, cx, rowY, `FROGS  +${frogPts}`, 8, C_WHITE).setOrigin(0.5); rowY += ROW;
     }
-
-    if (this.gameState.padPenaltyTotal > 0) {
-      this.add.text(centerX, centerY + 4, `Pad penalties: -${this.gameState.padPenaltyTotal}`, { ...style, color: '#FF004D' }).setOrigin(0.5);
+    if (padPenalty > 0) {
+      bt(this, cx, rowY, `PADS   -${padPenalty}`, 8, C_RED).setOrigin(0.5); rowY += ROW;
     }
-
     if (isWin) {
-      this.add.text(centerX, centerY + 20, `Win bonus: +${winBonus}`, { ...style, color: '#00E436' }).setOrigin(0.5);
-      this.add.text(centerX, centerY + 36, `Time bonus: +${timeBonus}`, { ...style, color: '#00E436' }).setOrigin(0.5);
+      bt(this, cx, rowY, `WIN BONUS  +${winBonus}`,  7, C_GREEN).setOrigin(0.5); rowY += ROW;
+      bt(this, cx, rowY, `TIME BONUS +${timeBonus}`, 8, C_GREEN).setOrigin(0.5); rowY += ROW;
     }
 
-    // Total score
-    this.add.text(centerX, centerY + 60, `Total: ${totalScore}`, { ...style, color: '#FFA300', fontSize: '18px' }).setOrigin(0.5);
+    rowY += 6;
+    bt(this, cx, rowY, `TOTAL  ${total}`, 8, C_ORANGE).setOrigin(0.5);
 
-    // Play game over sound (singleton — no new AudioContext created)
     const sound = getSoundManager();
     sound.ctx.resume().then(() => sound.play('gameOver'));
 
-    // Transition to leaderboard after 2 seconds
     this.time.delayedCall(2000, () => {
-      this.scene.start('LeaderboardScene', { score: totalScore, level: this.gameState.currentLevel || 1 });
+      this.scene.start('LeaderboardScene', { score: total, level: this.gameState.currentLevel || 1 });
     });
   }
 }

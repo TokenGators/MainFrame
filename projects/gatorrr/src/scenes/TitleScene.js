@@ -1,12 +1,8 @@
 import Phaser from 'phaser';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
+import bt, { C_WHITE, C_ORANGE, C_YELLOW, C_GREEN, C_GRAY, C_DIM } from '../ui/bitmapText.js';
 
-const PS2P   = "'Press Start 2P', monospace";
-const GREEN  = '#00E436';
-const ORANGE = '#FFA300';
-const WHITE  = '#FFF1E8';
-const GRAY   = '#C2C3C7';
-const DIM    = '#5F574F';
+const LOGO_MAX_W = 300;
 
 export default class TitleScene extends Phaser.Scene {
   constructor() {
@@ -14,78 +10,57 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    const cx = CANVAS_WIDTH / 2;
-    let y = 22;
+    const cx = CANVAS_WIDTH  / 2;
 
-    // ── Title ─────────────────────────────────────────────────────────────
-    this.add.text(cx, y, 'GATORRR', {
-      fontFamily: PS2P,
-      fontSize: '20px',
-      color: GREEN,
-    }).setOrigin(0.5);
-    y += 26;
+    // ── HI-SCORE header ───────────────────────────────────────────────────
+    bt(this, cx, 10, 'HI-SCORE', 8, C_ORANGE).setOrigin(0.5, 0);
 
-    // ── Tagline ───────────────────────────────────────────────────────────
-    this.add.text(cx, y, 'Eat frogs. Avoid the pads.', {
-      fontFamily: PS2P,
-      fontSize: '6px',
-      color: WHITE,
-    }).setOrigin(0.5);
-    y += 14;
+    const hiScore = this._getHiScore();
+    bt(this, cx, 22, hiScore.toString().padStart(6, '0'), 8, C_WHITE).setOrigin(0.5, 0);
 
-    // ── Controls hint ─────────────────────────────────────────────────────
-    this.add.text(cx, y, 'ARROWS move  SPACE dive  SHIFT+dir bite', {
-      fontFamily: PS2P,
-      fontSize: '5px',
-      color: GRAY,
-    }).setOrigin(0.5);
-    y += 11;
+    // ── Logo ──────────────────────────────────────────────────────────────
+    const logo = this.add.image(cx, 0, 'logo').setOrigin(0.5, 0);
+    if (logo.width > LOGO_MAX_W) logo.setScale(LOGO_MAX_W / logo.width);
 
-    // ── How to Play hint ──────────────────────────────────────────────────
-    const htpHint = this.add.text(cx, y, 'H \u2014 how to play', {
-      fontFamily: PS2P,
-      fontSize: '5px',
-      color: ORANGE,
-    }).setOrigin(0.5);
-    y += 16;
+    const logoH   = logo.height * logo.scaleY;
+    const zoneTop = 40;
+    const zoneBot = 220;
+    logo.y = zoneTop + (zoneBot - zoneTop - logoH) / 2;
 
-    // ── Leaderboard (top 3) ───────────────────────────────────────────────
-    this.add.text(cx, y, '\u2500\u2500 TOP SCORES \u2500\u2500', {
-      fontFamily: PS2P,
-      fontSize: '7px',
-      color: ORANGE,
-    }).setOrigin(0.5);
-    y += 14;
+    // ── INSERT COIN + bouncing coin ───────────────────────────────────────
+    const coinTextY = logo.y + logoH + Math.max(22, (zoneBot - logo.y - logoH) / 2);
 
-    this._showTop3(cx, y);
-    y += 46; // 3 rows × ~15px
+    const coinText = bt(this, cx, coinTextY, 'INSERT COIN', 8, C_YELLOW).setOrigin(0.5, 0);
 
-    // ── Start prompt (blinking) ───────────────────────────────────────────
-    const startText = this.add.text(cx, y, 'PRESS ANY KEY', {
-      fontFamily: PS2P,
-      fontSize: '8px',
-      color: WHITE,
-    }).setOrigin(0.5);
-
-    this.tweens.add({
-      targets: startText,
-      alpha: 0,
-      duration: 300,
-      yoyo: true,
-      repeat: -1,
+    this.time.addEvent({
+      delay: 333,
+      loop: true,
+      callback: () => { coinText.setVisible(!coinText.visible); },
     });
 
-    // ── H key shows How to Play overlay ───────────────────────────────────
+    const coinSprite  = this.add.image(cx, coinTextY - 18, 'coin').setOrigin(0.5).setDepth(5);
+    const coinBaseY   = coinSprite.y;
+    this.time.addEvent({
+      delay: 16,
+      loop: true,
+      callback: () => {
+        const t = this.time.now / 1000;
+        coinSprite.scaleX = Math.abs(Math.cos(t * Math.PI * 1.4));
+        coinSprite.y      = coinBaseY + Math.sin(t * Math.PI * 1.1) * 4;
+      },
+    });
+
+    // ── Footer ────────────────────────────────────────────────────────────
+    bt(this, cx, CANVAS_HEIGHT - 20, 'SUPERPAPERTHINGS (C) 2026', 8, C_DIM).setOrigin(0.5, 0);
+    bt(this, CANVAS_WIDTH - 4, CANVAS_HEIGHT - 10, 'CREDITS  00', 8, C_GRAY).setOrigin(1, 0);
+
+    // ── Input ─────────────────────────────────────────────────────────────
     this._howToPlayVisible = false;
     this._htpOverlay = null;
 
     this.input.keyboard.on('keydown', (event) => {
       if (event.key === 'h' || event.key === 'H') {
-        if (this._howToPlayVisible) {
-          this._dismissHowToPlay();
-        } else {
-          this._showHowToPlay();
-        }
+        this._howToPlayVisible ? this._dismissHowToPlay() : this._showHowToPlay();
       } else if (!this._howToPlayVisible) {
         this.scene.start('GameScene');
       } else {
@@ -94,69 +69,46 @@ export default class TitleScene extends Phaser.Scene {
     });
   }
 
-  _showTop3(cx, y) {
-    let leaderboard = [];
-    try {
-      leaderboard = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
-    } catch (e) { /* ignore */ }
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
-    for (let i = 0; i < 3; i++) {
-      const entry = leaderboard[i];
-      const rowY = y + i * 14;
-      const rank = `${i + 1}.`;
-      if (entry) {
-        const name  = (entry.name  || '---').padEnd(3, ' ');
-        const score = entry.score.toString().padStart(5, ' ');
-        const lvl   = `L${entry.level || 1}`;
-        this.add.text(cx - 60, rowY, rank,  { fontFamily: PS2P, fontSize: '7px', color: GRAY }).setOrigin(0, 0.5);
-        this.add.text(cx - 40, rowY, name,  { fontFamily: PS2P, fontSize: '7px', color: WHITE }).setOrigin(0, 0.5);
-        this.add.text(cx + 4,  rowY, score, { fontFamily: PS2P, fontSize: '7px', color: WHITE }).setOrigin(0, 0.5);
-        this.add.text(cx + 50, rowY, lvl,   { fontFamily: PS2P, fontSize: '7px', color: GRAY  }).setOrigin(0, 0.5);
-      } else {
-        this.add.text(cx - 60, rowY, rank,  { fontFamily: PS2P, fontSize: '7px', color: DIM }).setOrigin(0, 0.5);
-        this.add.text(cx - 40, rowY, '---', { fontFamily: PS2P, fontSize: '7px', color: DIM }).setOrigin(0, 0.5);
-        this.add.text(cx + 4,  rowY, '  ---', { fontFamily: PS2P, fontSize: '7px', color: DIM }).setOrigin(0, 0.5);
-      }
+  _getHiScore() {
+    try {
+      const board = JSON.parse(localStorage.getItem('gatorrr_leaderboard') || '[]');
+      if (board.length === 0) return 0;
+      return Math.max(...board.map(e => e.score || 0));
+    } catch (e) {
+      return 0;
     }
   }
 
   _showHowToPlay() {
     this._howToPlayVisible = true;
-    const cx = CANVAS_WIDTH / 2;
+    const cx = CANVAS_WIDTH  / 2;
     const cy = CANVAS_HEIGHT / 2;
 
-    // Semi-transparent backing panel
-    const panel = this.add.rectangle(cx, cy, CANVAS_WIDTH - 32, CANVAS_HEIGHT - 40, 0x000000, 0.92)
+    const panel = this.add.rectangle(cx, cy, CANVAS_WIDTH - 24, CANVAS_HEIGHT - 32, 0x000000, 0.94)
       .setOrigin(0.5).setDepth(50);
 
     const lines = [
-      { text: 'HOW TO PLAY',   color: GREEN,  size: '8px',  dy: -72 },
-      { text: 'EAT 10 FROGS TO WIN',          color: WHITE,  size: '6px',  dy: -50 },
-      { text: 'LOSE IF HP HITS 0',            color: WHITE,  size: '6px',  dy: -38 },
-      { text: 'LOSE IF 5 PADS FILL UP',       color: WHITE,  size: '6px',  dy: -26 },
-      { text: '',                              color: WHITE,  size: '6px',  dy: -14 },
-      { text: 'ARROWS \u2014 MOVE',           color: GRAY,   size: '6px',  dy: -2  },
-      { text: 'SPACE \u2014 DIVE UNDER LOGS', color: GRAY,   size: '6px',  dy: 10  },
-      { text: 'SHIFT+DIR \u2014 BITE LOGS',   color: GRAY,   size: '6px',  dy: 22  },
-      { text: '',                              color: WHITE,  size: '6px',  dy: 34  },
-      { text: 'GREEN  200    BLUE  500',       color: GREEN,  size: '5px',  dy: 46  },
-      { text: 'RED  1500    GOLD  2000',       color: ORANGE, size: '5px',  dy: 57  },
-      { text: '',                              color: WHITE,  size: '5px',  dy: 68  },
-      { text: 'PRESS ANY KEY TO CLOSE',        color: ORANGE, size: '5px',  dy: 78  },
+      { text: 'HOW TO PLAY',              color: C_GREEN,  size: 8, dy: -76 },
+      { text: 'EAT 10 FROGS TO WIN',      color: C_WHITE,  size: 8, dy: -54 },
+      { text: 'LOSE IF HP HITS 0',        color: C_WHITE,  size: 8, dy: -42 },
+      { text: 'LOSE IF 5 PADS FILL UP',   color: C_WHITE,  size: 8, dy: -30 },
+      { text: 'ARROWS - MOVE',            color: C_GRAY,   size: 8, dy: -10 },
+      { text: 'SPACE  - DIVE',            color: C_GRAY,   size: 8, dy:   2 },
+      { text: 'SHIFT+DIR - BITE LOG',     color: C_GRAY,   size: 8, dy:  14 },
+      { text: 'GREEN 200   BLUE 500',     color: C_GREEN,  size: 8, dy:  32 },
+      { text: 'RED 1500   GOLD 2000',     color: C_ORANGE, size: 8, dy:  44 },
+      { text: 'PRESS ANY KEY TO CLOSE',   color: C_ORANGE, size: 8, dy:  66 },
     ];
 
     const objects = [panel];
     for (const l of lines) {
-      if (!l.text) continue;
       objects.push(
-        this.add.text(cx, cy + l.dy, l.text, {
-          fontFamily: PS2P,
-          fontSize: l.size,
-          color: l.color,
-        }).setOrigin(0.5).setDepth(51)
+        bt(this, cx, cy + l.dy, l.text, l.size, l.color)
+          .setOrigin(0.5).setDepth(51)
       );
     }
-
     this._htpOverlay = objects;
   }
 
