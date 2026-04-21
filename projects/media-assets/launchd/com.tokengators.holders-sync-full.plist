@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tokengators.holders-sync-full</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/operator/repos/MainFrame/projects/media-assets/scripts/sync-pipeline.sh</string>
+        <string>--full</string>
+    </array>
+
+    <!-- Full enrichment every 6h (21600s). Picks up new-wallet identity. -->
+    <key>StartInterval</key>
+    <integer>21600</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/operator/.openclaw/logs/holders-sync-full-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/operator/.openclaw/logs/holders-sync-full-launchd.log</string>
+
+    <!-- 30 min max; ENS/OpenSea enrichment can be slow. -->
+    <key>TimeOut</key>
+    <integer>1800</integer>
+
+    <key>ThrottleInterval</key>
+    <integer>600</integer>
+</dict>
+</plist>

@@ -12,8 +12,11 @@ import { MarketPage } from './pages/MarketPage';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: false,
+      // Live-feed data (market/holders/activity) refetches via per-query
+      // refetchInterval. Keep a short staleTime so switching tabs within the
+      // app re-fetches instead of reading stale cache.
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: true,
     },
   },
 });

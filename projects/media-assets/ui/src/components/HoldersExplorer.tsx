@@ -402,7 +402,8 @@ export function HoldersExplorer() {
       per_page: ACTIVITY_PER_PAGE,
     }),
     enabled: topView === 'activity',
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: topView === 'activity' ? 60 * 1000 : false,
   });
 
   // ── Sync / refresh ──────────────────────────────────────────────────────────

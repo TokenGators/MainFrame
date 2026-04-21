@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tokengators.discord-notify</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Users/operator/repos/MainFrame/projects/media-assets/scripts/discord-notify.js</string>
+    </array>
+
+    <!-- Daemon: keep alive, restart on exit. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Sourced at install time from ~/.openclaw/.env via install-services.sh. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>DISCORD_SALES_WEBHOOK</key>
+        <string></string>
+        <key>DISCORD_LISTINGS_WEBHOOK</key>
+        <string></string>
+        <key>MIN_SALE_ETH</key>
+        <string>0</string>
+        <key>MIN_SALE_APE</key>
+        <string>0</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/operator/.openclaw/logs/discord-notify.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/operator/.openclaw/logs/discord-notify.log</string>
+
+    <!-- Don't hot-loop if it keeps crashing. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>

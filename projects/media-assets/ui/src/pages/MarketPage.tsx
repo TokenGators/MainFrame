@@ -143,8 +143,8 @@ export function MarketPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['market'],
     queryFn:  () => api.market.get(),
-    staleTime: 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 
   if (isLoading) return <div className="p-8 text-[#33ff33]/40">Loading market…</div>;

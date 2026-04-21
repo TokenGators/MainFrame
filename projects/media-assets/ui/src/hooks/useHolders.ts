@@ -6,7 +6,8 @@ export function useHolders(filters: HolderFilters = {}) {
   return useQuery({
     queryKey: ['holders', filters],
     queryFn: () => api.holders.list(filters),
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 }
 
@@ -14,6 +15,7 @@ export function useHolderStats() {
   return useQuery({
     queryKey: ['holder-stats'],
     queryFn: () => api.holders.stats(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 }
